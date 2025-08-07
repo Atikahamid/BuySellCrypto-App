@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "solana-bags",
+  "private_key_id": "26d830286bbd66555169842f94b238fadb834332",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCyVPaWurot5xeF\nT6BzN2c5Ex1mEx9mKJT5StSKnb2i+oi+FRECfAY8F+or65emUTeqHCcexAZ0FE0f\nkMLRU8su6P9iAtd1ZXNPVTe4oBL+zLNnpyoRZSCIV3Z1r78/cfCs6Tll6xm+/OSS\nnLO7Jjc7gkJTyfGklIIwQX7j6FuiBmN+B2FXZhRCt3m1eGTAzCXar9WUu6tng5rp\nGkpDgrPNUCS7KlaumcP9bz4CZEGdvt/vYBwjv4obhqNQ6c/hdgFb4dVl84F1rQLI\nodgSDErPI0yOnligVEtnGd6pSXFnzQanDPXAhlHfGWUfwGG2Ghvh4OF9xxpXS5/e\npyCHRQrlAgMBAAECggEAAIPF7xsciiELzIA1gS+h63nBJiLG/pdTusEltOgN/JLx\njcQ8zNTeexJB7vIv+V8W+eA5Qq75KnZGigvzwVaXFGHAHvXNeRLGZEO630cNrFDw\nnEt7ZRp1dL9KjGi/ShJs9JV7FhlkH8zWEhBED+BlMhWcVbvpp8/Kl74Qp4gWVPTj\nh6I3ZA0x9u4QfDx7X24jr8M2DWeZqvKwzP/rj602mqiE3M6jFaC374lMUx0Yo0Yy\nQXtgNJUuL0D2b4rIqe8HjmcfpVIqb+0+hlQNKx14r278yRq0fQTpyDrIplOjAgHZ\nyAiinCgcJKs4khOiteaDkqcs93ADbwCREjOAQtm7UQKBgQDd65qyFT9fCLyIRO2f\nwSEgFZrKGQ6kB5ipaPK0eWWN+RY3KhF7yF4AJ1lqYKssobPGOSKOlkKMYPK/kmgH\n6u/HqET1gJQJ/NutvReXKbd9A50tpCQh0mxWA0P8TxBhXlmdMOQMSjgJ66l82MvR\nj6PgKmYqtUSdIgSY5Pe1XnfsmQKBgQDNt8IimnNfks7Zk1I7+5d3lIBukZLEUiAP\n6v4AWBCWjXZY8Eew0GVn6vh3ufbEo2aiJ4Or1SRwZcwFWELMoXSlYX6Vw8ubb1MW\n66JkUbMg7R9sm1JkSaQccUd/3OFSYSfpuxDPIPm+qhdkmpTENCRk/fdIHDdUXL+Y\n/sZ5y6iULQKBgQCP5HqTyc8jUcjdGsRw94sBAMEzFXg2x24nOpNUjfpZSg8ria14\nc3zv4JPLtA6Ji/fDKbzMc4WG/D2qFcY6jA0ZinPcM5jJuRi/2IH5U+VTvAooU+vR\nulzgkJF+gc1/NOwqTk8v4NfhJtroxrGxmc+KRDOmsY5hzHLqqFwtT6m20QKBgQDF\nCq7LoC7EK4Uvh9mrlId3RWli/tKacqM9O/OA9tkkq2jhNX0lkeafi8PkQd5oaK6k\nwL5w9x4I/qhVsj2BbWCiC+lIoBrEzfPDL34DIvI1poqD554aayLjD2nRwgqccmzd\nho1KKCavBpKTjTDTYbI+fbe+fTBOAOyQKfCHtpfJHQKBgAq4QOkKn/gTRi2FKeiE\n4BQ6T2HQK5DrduA5YAIG8qDAeV77oCQ6nPJ43dPnedrEBrdKOaBT1DnjlyOAgZQ2\njrVozmoh6FIFqM/w2uAC7OPfb/9bL44CUl2kHEYzHNVHQ+lC3MvpVSKQLuTW7+6J\ntewGR0hldXuB5M/r5awMqs/N\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@solana-bags.iam.gserviceaccount.com",
+  "client_id": "116489420453648170684",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40solana-bags.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
