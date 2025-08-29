@@ -46,7 +46,7 @@ if (hasDevFlag) {
 }
 
 // Run expo start with the correct arguments and environment variables
-const expo = spawn('npx', expoArgs, { stdio: 'inherit', env });
+const expo = spawn('npx', expoArgs, { stdio: 'inherit', env, shell: true });
 
 expo.on('close', code => {
   process.exit(code);

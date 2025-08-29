@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Platform, View, FlatList, StatusBar } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Thread } from '@/core/thread/components/thread-container/Thread';
 import {
@@ -183,21 +184,29 @@ export default function FeedScreen() {
   // Show skeleton until profile is stable AND initial posts are loaded
   if (!profileStable || areInitialPostsLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />
-        <View style={[
-          Platform.OS === 'android' && {
-            paddingTop: insets.top
-          }
-        ]}>
-          <FlatList
-            data={[1, 2, 3]}
-            keyExtractor={(item) => item.toString()}
-            renderItem={() => <FeedItemSkeleton />}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={COLORS.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.container}>
+          <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />
+          <View style={[
+            Platform.OS === 'android' && {
+              paddingTop: insets.top
+            }
+          ]}>
+            <FlatList
+              data={[1, 2, 3]}
+              keyExtractor={(item) => item.toString()}
+              renderItem={() => <FeedItemSkeleton />}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
     );
   }
 
@@ -211,94 +220,102 @@ export default function FeedScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        Platform.OS === 'android' && {
-          paddingTop: insets.top
-        }
-      ]}>
-      <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />
-      {renderCustomHeader()}
-      <Thread
-        rootPosts={feedPosts} // Passing all posts (including replies)
-        currentUser={currentUser}
-        ctaButtons={ctaButtons}
-        // Set disableReplies to false so that replies render with their parent snippet.
-        disableReplies={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        // Pass scroll UI context to Thread component
-        scrollUI={scrollUI}
-        // onPressPost navigates to the PostThreadScreen with the post's ID.
-        onPressPost={post => {
-          // For retweets and quotes, handle navigation correctly:
-          if (post.retweetOf) {
-            // If this is a retweet with no content (direct retweet), navigate to the original
-            if (post.sections.length === 0) {
-              navigation.navigate('PostThread', { postId: post.retweetOf.id });
+    <LinearGradient
+      colors={COLORS.backgroundGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}
+    >
+      <SafeAreaView
+        style={[
+          styles.container,
+          Platform.OS === 'android' && {
+            paddingTop: insets.top
+          }
+        ]}>
+        <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />
+        {renderCustomHeader()}
+        <Thread
+          rootPosts={feedPosts} // Passing all posts (including replies)
+          currentUser={currentUser}
+          ctaButtons={ctaButtons}
+          // Set disableReplies to false so that replies render with their parent snippet.
+          disableReplies={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          // Pass scroll UI context to Thread component
+          scrollUI={scrollUI}
+          // onPressPost navigates to the PostThreadScreen with the post's ID.
+          onPressPost={post => {
+            // For retweets and quotes, handle navigation correctly:
+            if (post.retweetOf) {
+              // If this is a retweet with no content (direct retweet), navigate to the original
+              if (post.sections.length === 0) {
+                navigation.navigate('PostThread', { postId: post.retweetOf.id });
+              } else {
+                // If it's a quote retweet, navigate to the quote itself
+                navigation.navigate('PostThread', { postId: post.id });
+              }
             } else {
-              // If it's a quote retweet, navigate to the quote itself
+              // Regular post
               navigation.navigate('PostThread', { postId: post.id });
             }
-          } else {
-            // Regular post
-            navigation.navigate('PostThread', { postId: post.id });
-          }
-        }}
-        themeOverrides={{
-          '--thread-bg-primary': COLORS.background,
-          '--retweet-border-color': COLORS.borderDarkColor,
-          '--retweet-bg-color': COLORS.lighterBackground,
-          '--retweet-text-color': COLORS.greyMid
-        }}
-        styleOverrides={{
-          container: { padding: 6 },
-          button: { borderRadius: 8 },
-          buttonLabel: { fontWeight: 'bold' },
-          retweetHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 6,
-            paddingLeft: 6,
-            paddingTop: 4,
-          },
-          retweetHeaderText: {
-            fontSize: 13,
-            color: COLORS.greyMid,
-            marginLeft: 6,
-            fontWeight: '500',
-          },
-          retweetedContent: {
-            marginTop: 4,
-            width: '100%',
-          },
-          originalPostContainer: {
-            width: '100%',
-            borderRadius: 12,
-            backgroundColor: COLORS.lighterBackground,
-            padding: 10,
-            borderWidth: 1,
-            borderColor: COLORS.borderDarkColor,
-          },
-        }}
-        onPressUser={user => {
-          // Check if the tapped user is the current (logged-in) user
-          if (user.id === currentUser.id) {
-            navigation.navigate('ProfileScreen' as never); // Show own profile
-          } else {
-            navigation.navigate('OtherProfile', { userId: user.id }); // Show other profile
-          }
-        }}
-      />
-    </SafeAreaView>
+          }}
+          themeOverrides={{
+            '--thread-bg-primary': COLORS.background,
+            '--retweet-border-color': COLORS.borderDarkColor,
+            '--retweet-bg-color': COLORS.lighterBackground,
+            '--retweet-text-color': COLORS.greyMid
+          }}
+          styleOverrides={{
+            container: { padding: 6 },
+            button: { borderRadius: 8 },
+            buttonLabel: { fontWeight: 'bold' },
+            retweetHeader: {
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 6,
+              paddingLeft: 6,
+              paddingTop: 4,
+            },
+            retweetHeaderText: {
+              fontSize: 13,
+              color: COLORS.greyMid,
+              marginLeft: 6,
+              fontWeight: '500',
+            },
+            retweetedContent: {
+              marginTop: 4,
+              width: '100%',
+            },
+            originalPostContainer: {
+              width: '100%',
+              borderRadius: 12,
+              backgroundColor: COLORS.lighterBackground,
+              padding: 10,
+              borderWidth: 1,
+              borderColor: COLORS.borderDarkColor,
+            },
+          }}
+          onPressUser={user => {
+            // Check if the tapped user is the current (logged-in) user
+            if (user.id === currentUser.id) {
+              navigation.navigate('ProfileScreen' as never); // Show own profile
+            } else {
+              navigation.navigate('OtherProfile', { userId: user.id }); // Show other profile
+            }
+          }}
+        />
+      </SafeAreaView>
+    </LinearGradient>
+
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    // backgroundColor: COLORS.background,
   },
   centerContent: {
     justifyContent: 'center',

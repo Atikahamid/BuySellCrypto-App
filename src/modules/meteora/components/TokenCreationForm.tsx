@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// import {Solfla}
 import {
     View,
     Text,
@@ -89,8 +90,9 @@ export default function TokenCreationForm({
     const [isUploadingMetadata, setIsUploadingMetadata] = useState(false);
     const [showSocials, setShowSocials] = useState(false);
 
-    // Get wallet and connection
+    // Get wallet and connection 
     const wallet = useWallet();
+    // console.log("wallet publickey passing: ", wallet.publicKey?.toBase58())
     // Create a connection to the Solana network with better configuration
     const connection = new Connection(
         HELIUS_STAKED_URL,
@@ -250,45 +252,25 @@ export default function TokenCreationForm({
             console.log('Creating token with params:', {
                 tokenName,
                 tokenSymbol,
-                initialMarketCap: parseFloat(initialMarketCap),
-                targetMarketCap: parseFloat(migrationMarketCap),
-                tokenSupply: parseInt(tokenSupply),
                 buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
                 metadataUri: uri,
-                baseFeeBps: parseInt(baseFeeBps),
-                dynamicFeeEnabled,
-                collectFeeBoth,
-                migrationFeeOption: selectedMigrationFee,
-                partnerLpPercentage: parseInt(partnerLpPercentage),
-                creatorLpPercentage: parseInt(creatorLpPercentage),
-                partnerLockedLpPercentage: parseInt(partnerLockedLpPercentage),
-                creatorLockedLpPercentage: parseInt(creatorLockedLpPercentage)
+                website: tokenWebsite,
+                logo: imageUri || tokenLogo,
             });
 
-            // Use the improved createTokenWithCurve function with metadata URI
+            // Use the createTokenWithCurve function with only the required params
+            const walletPubKey = '9nD1tYqzohcYwmnxEwq3fRBs1WBavDVQbTWbsRBC5SND';
             const result = await createTokenWithCurve(
                 {
                     tokenName,
                     tokenSymbol,
-                    initialMarketCap: parseFloat(initialMarketCap),
-                    targetMarketCap: parseFloat(migrationMarketCap),
-                    tokenSupply: parseInt(tokenSupply),
                     buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
                     metadataUri: uri,
                     website: tokenWebsite,
                     logo: imageUri || tokenLogo,
-                    // Pass the advanced settings
-                    baseFeeBps: parseInt(baseFeeBps),
-                    dynamicFeeEnabled,
-                    collectFeeBoth,
-                    migrationFeeOption: selectedMigrationFee,
-                    partnerLpPercentage: parseInt(partnerLpPercentage),
-                    creatorLpPercentage: parseInt(creatorLpPercentage),
-                    partnerLockedLpPercentage: parseInt(partnerLockedLpPercentage),
-                    creatorLockedLpPercentage: parseInt(creatorLockedLpPercentage)
                 },
                 connection,
-                wallet,
+                walletPubKey,
                 setStatusMessage
             );
 
@@ -297,6 +279,18 @@ export default function TokenCreationForm({
             if (onTokenCreated && result.baseMintAddress) {
                 onTokenCreated(result.baseMintAddress, result.txId);
             }
+            setTokenName('');
+            setTokenSymbol('');
+            setBuyAmount('');
+            setBuyOnCreate(false);
+            setMetadataUri('');
+            setTokenWebsite('');
+            setTokenLogo('');
+            setImageUri(null);
+            setTokenDescription('');
+            setTokenTwitter('');
+            setTokenTelegram('');
+            setStatusMessage('Token created successfully!');
         } catch (err) {
             console.error('Error creating token:', err);
             setError(`Failed to create token: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -396,7 +390,7 @@ export default function TokenCreationForm({
     const renderStep1 = () => {
         return (
             <View>
-                <Text style={styles.sectionTitle}>Basic Token Information</Text>
+                {/* <Text style={styles.sectionTitle}>Basic Token Information</Text> */}
 
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Token Name</Text>
@@ -426,7 +420,7 @@ export default function TokenCreationForm({
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Description</Text>
                     <TextInput
-                        style={[styles.input, { height: 80 }]}
+                        style={[styles.input, { height: 70 }]}
                         value={tokenDescription}
                         onChangeText={setTokenDescription}
                         placeholder="Describe your token's purpose"
@@ -482,13 +476,13 @@ export default function TokenCreationForm({
                             </View>
                         ) : (
                             <View style={styles.uploadContent}>
-                                <View style={{ paddingTop: 10 }} />
+                                <View style={{ paddingTop: 2 }} />
                                 <TouchableOpacity
                                     onPress={pickImage}
                                     style={styles.uploadImageButton}
                                     disabled={isCreating}>
                                     <LinearGradient
-                                        colors={['#32D4DE', '#B591FF']}
+                                        colors={['#427abbff', '#164780ff']}
                                         start={{ x: 0, y: 0 }}
                                         end={{ x: 1, y: 0 }}
                                         style={styles.uploadButtonGradient}
@@ -497,9 +491,9 @@ export default function TokenCreationForm({
                                     </LinearGradient>
                                 </TouchableOpacity>
 
-                                <Text style={styles.orText}>OR</Text>
+                                {/* <Text style={styles.orText}>OR</Text> */}
 
-                                <View style={styles.urlInputContainer}>
+                                {/* <View style={styles.urlInputContainer}>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="Enter image URL (https://... or ipfs://...)"
@@ -515,7 +509,7 @@ export default function TokenCreationForm({
                                         disabled={isCreating || !tokenLogo}>
                                         <Text style={styles.urlButtonText}>Use URL</Text>
                                     </TouchableOpacity>
-                                </View>
+                                </View> */}
                                 <Text style={styles.helperText}>
                                     Upload a square image (recommended 512x512px)
                                 </Text>
@@ -563,8 +557,34 @@ export default function TokenCreationForm({
                         </View>
                     </View>
                 )}
+                {/* Buy on create option */}
+                <View style={styles.switchContainer}>
+                    <Text style={styles.label}>Buy tokens after creation</Text>
+                    <Switch
+                        value={buyOnCreate}
+                        onValueChange={setBuyOnCreate}
+                        trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
+                        thumbColor={buyOnCreate ? COLORS.white : COLORS.greyLight}
+                    />
+                </View>
 
-                <View style={styles.inputContainer}>
+                {/* Buy amount input (only shown when toggle is on) */}
+                {buyOnCreate && (
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Amount to buy (SOL)</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={buyAmount}
+                            onChangeText={setBuyAmount}
+                            placeholder="e.g. 1"
+                            placeholderTextColor={COLORS.greyDark}
+                            keyboardType="numeric"
+                            keyboardAppearance="dark"
+                        />
+                        <Text style={styles.helperText}>Amount of SOL to spend buying your token after creation.</Text>
+                    </View>
+                )}
+                {/* <View style={styles.inputContainer}>
                     <Text style={styles.label}>Total Supply</Text>
                     <TextInput
                         style={styles.input}
@@ -589,7 +609,7 @@ export default function TokenCreationForm({
                         maxLength={1}
                         keyboardAppearance="dark"
                     />
-                </View>
+                </View> */}
 
                 {/* <View style={styles.switchContainer}>
                     <Text style={styles.label}>Use Token-2022 Standard</Text>
@@ -603,7 +623,7 @@ export default function TokenCreationForm({
 
                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                <TouchableOpacity style={styles.actionButton} onPress={handleNext}>
+                {/* <TouchableOpacity style={styles.actionButton} onPress={handleNext}>
                     <LinearGradient
                         colors={['#32D4DE', '#B591FF']}
                         start={{ x: 0, y: 0 }}
@@ -611,6 +631,26 @@ export default function TokenCreationForm({
                         style={styles.actionButtonGradient}
                     >
                         <Text style={styles.actionButtonText}>Next</Text>
+                    </LinearGradient>
+                </TouchableOpacity> */}
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.createButton]}
+                    onPress={handleCreateToken}
+                    disabled={isCreating}
+                >
+                    <LinearGradient
+                        colors={['#427abbff', '#164780ff']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.actionButtonGradient}
+                    >
+                        {isCreating ? (
+                            <ActivityIndicator color={COLORS.white} />
+                        ) : (
+                            <Text style={styles.actionButtonText}>
+                                {buyOnCreate ? 'Create & Buy Tokens' : 'Create Token'}
+                            </Text>
+                        )}
                     </LinearGradient>
                 </TouchableOpacity>
             </View>
@@ -862,11 +902,17 @@ export default function TokenCreationForm({
     };
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.card}>
-                <Text style={styles.title}>Create Token with Bonding Curve</Text>
-
-                <View style={styles.stepIndicator}>
+        <LinearGradient
+            colors={COLORS.backgroundGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.container}
+        >
+            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                <View style={styles.card}>
+                    {/* <Text style={styles.title}>Create Token with Bonding Curve</Text> */}
+                    {renderStep1()}
+                    {/* <View style={styles.stepIndicator}>
                     <View style={[styles.step, step >= 1 && styles.stepActive]}>
                         <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
                     </View>
@@ -876,9 +922,10 @@ export default function TokenCreationForm({
                     </View>
                 </View>
 
-                {step === 1 ? renderStep1() : renderStep2()}
-            </View>
-        </ScrollView>
+                {step === 1 ? renderStep1() : renderStep2()} */}
+                </View>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 
@@ -887,18 +934,18 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     card: {
-        backgroundColor: COLORS.background,
+        // backgroundColor: COLORS.background,
         borderRadius: 16,
         padding: 10,
         margin: 16,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
+        // shadowColor: '#000',
+        // shadowOffset: {
+        //     width: 0,
+        //     height: 4,
+        // },
+        // shadowOpacity: 0.1,
+        // shadowRadius: 8,
+        // elevation: 5,
     },
     title: {
         fontSize: TYPOGRAPHY.size.xl,
@@ -952,14 +999,14 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: TYPOGRAPHY.size.sm,
-        color: COLORS.greyMid,
+        color: COLORS.white,
         marginBottom: 8,
     },
     input: {
         backgroundColor: COLORS.darkerBackground,
         borderRadius: 12,
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 8,
         color: COLORS.white,
         fontSize: TYPOGRAPHY.size.md,
         borderWidth: 1,
@@ -1109,7 +1156,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     imageUploadContainer: {
-        backgroundColor: COLORS.lighterBackground,
+        backgroundColor: COLORS.darkerBackground,
         borderRadius: 8,
         borderWidth: 1,
         borderColor: COLORS.borderDarkColor,

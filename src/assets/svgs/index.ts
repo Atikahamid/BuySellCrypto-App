@@ -74,7 +74,14 @@ import TokenMillIcon from './Tokenmill_icon.svg'
 import AddFundsIcon from './add-funds-icon.svg';
 import PlusCircleIcon from './plus-circle-icon.svg';
 import QrCodeIcon from './qr-code-icon.svg';
-
+import SearchIcons from './search-iconss.svg';
+import SearchIconssSelected from './search-iconss-selected.svg';
+import CreateCoinIcon from './create-coin.svg';
+import CreateCoinIconSelected from './create-coin-selected.svg';
+import MyChatIcon from './my-chat-icon.svg';
+import MyChatIconSelected from './my-chat-icon-selected.svg';
+import CoinStatusIcon from './coin-status-icon.svg';
+import CoinStatusIconSelected from './coin-status-icon-selected.svg';
 // Login elements right
 import RightRectangle from './login-elements-right/rectangle-right.svg';
 import RightSwap from './login-elements-right/swap-right.svg';
@@ -85,7 +92,10 @@ import RightEllipse from './login-elements-right/ellipse-right.svg';
 import EditIcon from './EditIcon';
 import GalleryIcon from './GalleryIcon';
 import NftIcon from './NftIcon';
-
+import SettingsIcon from './settings-icon.svg';
+import MyWalletIcon from './wallet-icon-my.svg';
+import BarsBTN from './bars-btn-swap.svg';
+import ThunderBtn from './thunder-btn-swap.svg';
 export default {
   SolanaDot,
   SplashText,
@@ -135,6 +145,8 @@ export default {
   listedNft,
   cross,
   arrowRIght,
+  BarsBTN,
+  ThunderBtn,
   // Login elements left
   LeftCircle,
   LeftStar,
@@ -163,7 +175,16 @@ export default {
   AddFundsIcon,
   PlusCircleIcon,
   QrCodeIcon,
-  
+  SearchIcons,
+  SearchIconssSelected,
+  CreateCoinIcon,
+  CreateCoinIconSelected,
+  MyChatIcon,
+  MyChatIconSelected,
+  CoinStatusIcon,
+  CoinStatusIconSelected,
+  SettingsIcon,
+  MyWalletIcon,
   // Login elements right
   RightRectangle,
   RightSwap,

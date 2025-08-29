@@ -7,7 +7,7 @@ import { TransactionService } from '../../wallet-providers/services/transaction/
 import { COMMISSION_WALLET, SERVER_URL } from '@env';
 import { Alert } from 'react-native';
 
-const API_BASE_URL = SERVER_URL || 'http://localhost:8080';
+const API_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
 
 export type SwapProvider = 'JupiterUltra' | 'Raydium' | 'PumpSwap';
 
@@ -226,7 +226,7 @@ export class TradeService {
             updateStatus('Preparing swap transaction...');
             
             // Get server URL
-            const baseUrl = SERVER_URL || 'http://localhost:8080';
+            const baseUrl = SERVER_URL || 'http://192.168.1.70:8080';
             console.log('[TradeService] Server URL:', baseUrl);
             
             // Use slippage from options or default to 10%

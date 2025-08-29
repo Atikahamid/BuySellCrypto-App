@@ -28,12 +28,14 @@ const COLORS = {
   cyan: '#32D4DE',
 
   // DarkBackground colors
-  background: '#0C101A',
+  // background: '#131720ff',
+  backgroundGradient: ['#000e1d', '#032448ff', '#00132a', '#031828', '#061141'],
   lightBackground: '#141926',
-  lighterBackground: '#1D212D',
+  lighterBackground: '#5366a1ff',
+  bottomTabBackground: '#232428ff',
   darkerBackground: '#101521',
   accessoryDarkColor: '#818B9A',
-  borderDarkColor: 'rgba(255, 255, 255, 0.1)',
+  borderDarkColor: 'rgba(35, 65, 131, 0.4)',
   textDarkColor: '#1E1E1E',
 };
 

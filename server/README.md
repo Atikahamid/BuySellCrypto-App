@@ -80,7 +80,7 @@ The server follows a modular, service-oriented architecture:
 | Google Cloud Storage | Account with bucket setup |
 | Pinata | Account for IPFS storage |
 | Turnkey | API access for wallet management |
-
+ 
 ## 🛠️ Installation
 
 1. **Clone the repository:**

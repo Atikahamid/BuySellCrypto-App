@@ -28,7 +28,7 @@ const initialState: AuthState = {
   attachmentData: {},
 };
 
-const SERVER_BASE_URL = SERVER_URL || 'http://localhost:3000';
+const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
 
 // Debug environment variable loading
 console.log('[Auth Reducer] SERVER_URL from @env:', SERVER_URL);

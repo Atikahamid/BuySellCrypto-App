@@ -15,6 +15,7 @@ const router = express.Router();
 // Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
+
 /**
  * Upload token metadata and image to IPFS
  * @route POST /api/meteora/uploadMetadata
@@ -22,9 +23,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any) => {
   try {
     console.log('[MeteoraDBC] Received metadata upload request');
-    
-    const {tokenName, tokenSymbol, description, twitter, telegram, website, imageUrl} = req.body;
-    
+
+    const { tokenName, tokenSymbol, description, twitter, telegram, website, imageUrl } = req.body;
+
     console.log('[MeteoraDBC] Processing token metadata:', {
       name: tokenName,
       symbol: tokenSymbol,
@@ -35,7 +36,7 @@ router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any
       hasImageUrl: !!imageUrl,
       hasFile: !!req.file
     });
-    
+
     if (!tokenName || !tokenSymbol || !description) {
       console.error('[MeteoraDBC] Missing required fields');
       return res.status(400).json({
@@ -43,11 +44,11 @@ router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any
         error: 'Missing required fields (tokenName, tokenSymbol, description)',
       });
     }
-    
+
     // Image can be either a file upload or a URL
     let imageBuffer;
     let imageSource;
-    
+
     if (req.file) {
       // Process uploaded file
       console.log('[MeteoraDBC] Using uploaded image file:', req.file.originalname || 'unnamed');
@@ -66,7 +67,7 @@ router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any
     }
 
     // Create metadata object
-    const metadataObj : any = {
+    const metadataObj: any = {
       name: tokenName,
       symbol: tokenSymbol,
       description,
@@ -76,9 +77,9 @@ router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any
       website: website || '',
       createdOn: 'https://meteora.ag/',
     };
-    
+
     console.log('[MeteoraDBC] Preparing to upload to IPFS/Pinata');
-    
+
     // Upload to IPFS if we have an image buffer, otherwise use the URL directly
     let metadataUri;
     try {
@@ -93,7 +94,7 @@ router.post('/uploadMetadata', upload.single('image'), async (req: any, res: any
         const dummyBuffer = Buffer.from('');
         metadataUri = await uploadToPinata(dummyBuffer, metadataObj);
       }
-      
+
       console.log('[MeteoraDBC] Successfully uploaded metadata, URI:', metadataUri);
     } catch (uploadError) {
       console.error('[MeteoraDBC] IPFS upload error:', uploadError);
@@ -137,7 +138,19 @@ router.post('/config', async (req: Request<{}, {}, types.CreateConfigParam>, res
     });
   }
 });
-
+router.post('/my-test-api', async (req, res) => {
+  try {
+    const response = await meteoraDBCService.myTestFunc();
+    console.log("response: ", response);
+    res.json(response);
+  } catch (error) {
+    console.error('Error in createPartnerMetadata route:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
 /**
  * Build curve and create config
  * @route POST /api/meteora/build-curve
@@ -190,6 +203,7 @@ router.post('/partner-metadata', async (req: Request<{}, {}, types.CreatePartner
     });
   }
 });
+
 
 /**
  * Claim partner trading fee
@@ -266,26 +280,26 @@ router.post('/pool-and-buy', async (req: Request<{}, {}, types.CreatePoolAndBuyP
 router.get('/quote', async (req: any, res: any) => {
   try {
     const { inputToken, outputToken, amount, slippage, poolAddress } = req.query;
-    
+
     if (!inputToken || !outputToken || !amount) {
       return res.status(400).json({
         success: false,
         error: 'Missing required parameters: inputToken, outputToken, amount',
       });
     }
-    
+
     // Check if this is a SOL-USDC pair (these are common)
     const isSOLUSDCPair = (
-      (inputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' && 
-       outputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v') ||
-      (outputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' && 
-       inputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v')
+      (inputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
+        outputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v') ||
+      (outputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
+        inputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v')
     );
-    
+
     if (isSOLUSDCPair) {
       console.log("Attempting to find SOL-USDC pool - this should be available");
     }
-    
+
     // If a specific pool address is provided, use it directly
     if (poolAddress) {
       console.log(`Using specific pool: ${poolAddress}`);
@@ -297,7 +311,7 @@ router.get('/quote', async (req: any, res: any) => {
           slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
           swapBaseForQuote: true, // This will be determined by the pool structure
         });
-        
+
         return res.json({
           success: true,
           poolAddress: poolAddress,
@@ -314,17 +328,17 @@ router.get('/quote', async (req: any, res: any) => {
         });
       }
     }
-    
+
     // Otherwise, find a suitable pool for this token pair
     console.log(`Attempting to find pool for: ${inputToken} <-> ${outputToken}`);
     const pools = await meteoraDBCService.getPoolForTokenPair(
-      inputToken as string, 
+      inputToken as string,
       outputToken as string
     );
-    
+
     if (!pools || pools.length === 0) {
       console.log(`No pool found for ${inputToken} and ${outputToken}. Returning price-based estimate.`);
-      
+
       // Instead of returning 404, return a special response indicating fallback to price-based estimate
       return res.json({
         success: false,
@@ -333,17 +347,17 @@ router.get('/quote', async (req: any, res: any) => {
         inputToken,
         outputToken,
         amount,
-        note: isSOLUSDCPair ? 
-          "SOL-USDC pair was expected but not found in Meteora. Using price estimation instead." : 
+        note: isSOLUSDCPair ?
+          "SOL-USDC pair was expected but not found in Meteora. Using price estimation instead." :
           "No liquidity pool available for this pair. Using price estimation."
       });
     }
-    
+
     console.log(`Found ${pools.length} pools for this pair. Using the first one.`);
-    
+
     // Get the best pool (first one for now, but could implement price comparison)
     const pool = pools[0];
-    
+
     // Get quote
     const quote = await meteoraDBCService.getSwapQuote({
       poolAddress: pool.address,
@@ -351,7 +365,7 @@ router.get('/quote', async (req: any, res: any) => {
       slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
       swapBaseForQuote: inputToken === pool.baseMint, // True if selling the base token
     });
-    
+
     res.json({
       success: true,
       poolAddress: pool.address,
@@ -653,19 +667,19 @@ router.get('/pool/:poolAddress/fees', async (req: Request, res: Response) => {
 router.get('/available-pools', async (req: any, res: any) => {
   try {
     const { token } = req.query;
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
         error: 'Missing required parameter: token',
       });
     }
-    
+
     console.log(`Fetching all available pools for token: ${token}`);
-    
+
     // Get all pools from Meteora
     const allPools = await meteoraDBCService.getAllPoolsForToken(token as string);
-    
+
     return res.json({
       success: true,
       pools: allPools

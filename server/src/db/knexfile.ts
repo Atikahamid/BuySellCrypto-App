@@ -1,23 +1,32 @@
 import * as path from 'path';
 import type { Knex } from 'knex';
-import dotenv from 'dotenv';
-dotenv.config();
+// import dotenv from 'dotenv';
+require('dotenv').config({path: '../../.env'});
 
 // Use Knex.Config type (might need adjustment if default import changes things)
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: 'pg',
-    connection: process.env.DATABASE_URL,
+    connection: {
+      host: "127.0.0.1",
+      port: 5432,
+      user: "postgres",
+      password: "asd123F$",
+      database: "solana_app_kit",
+    },
     migrations: {
-      directory: './src/db/migrations', 
+      directory: path.resolve(__dirname, "migrations"), 
+      extension: 'ts',
     },
   },
   production: {
     client: 'pg',
     connection: process.env.DATABASE_URL,
     migrations: {
-      directory: path.resolve(__dirname, 'migrations'),
+      directory: path.resolve(__dirname, "migrations"),
+      extension: 'ts',
     },
+   
     pool: { min: 2, max: 10 },
   },
 };

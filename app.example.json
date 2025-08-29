@@ -2,6 +2,9 @@
   "expo": {
     "name": "Solana App Kit",
     "slug": "solana-app-kit",
+    "extra": {
+      "serverUrl": "process.env.EXPO_PUBLIC_SERVER_URL",
+    },
     "scheme": "solanaappkit",
     "version": "0.0.1",
     "orientation": "portrait",

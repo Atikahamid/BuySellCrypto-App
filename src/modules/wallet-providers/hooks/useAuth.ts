@@ -18,7 +18,7 @@ import { StandardWallet, LoginMethod, WalletMonitorParams } from '../types';
  *  2) If 'privy', we handle via `usePrivyWalletLogic`.
  *  3) If 'dynamic', we handle via `useDynamicWalletLogic`.
  *  4) If 'turnkey', we handle via `useTurnkeyWalletLogic`.
- */
+ */ 
 export function useAuth() {
   const {auth: authConfig} = useCustomization();
   const selectedProvider = authConfig.provider;

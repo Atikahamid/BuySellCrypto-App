@@ -24,7 +24,7 @@ import { generateAndStoreAvatar } from '@/shared/services/diceBearAvatarService'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const SERVER_BASE_URL = SERVER_URL || 'http://localhost:3000';
+const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
 
 // SVG animation configurations
 const SVG_CONFIG = {

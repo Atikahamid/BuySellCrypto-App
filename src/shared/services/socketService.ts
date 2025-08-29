@@ -205,6 +205,11 @@ class SocketService {
       }
     });
 
+    //listener for recent swaps feed page
+    this.socket.on("token_transfer", (trade: any) => {
+      console.log("New trade events from backend: ", trade);
+    })
+
     // User typing indicator
     this.socket.on('user_typing', (data: { chatId: string; userId: string; isTyping: boolean }) => {
       console.log('User typing:', data);

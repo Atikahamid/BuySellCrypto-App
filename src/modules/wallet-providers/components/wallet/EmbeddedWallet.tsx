@@ -58,7 +58,7 @@ export interface EmbeddedWalletAuthProps {
   }) => void;
   authMode?: 'login' | 'signup';
 }
-
+ 
 const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
   onWalletConnected,
   authMode = 'login',

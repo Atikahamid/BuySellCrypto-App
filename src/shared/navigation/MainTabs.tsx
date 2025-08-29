@@ -4,6 +4,10 @@ import { Platform, TouchableOpacity, View, StyleSheet, Animated, Dimensions, Ima
 import { useNavigation, ParamListBase } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
+import { getThreadBaseStyles, headerStyles, tabStyles } from '../../core/thread/components/thread-container/Thread.styles';
+import { useAppSelector } from '@/shared/hooks/useReduxHooks';
+import { getValidImageSource } from '@/shared/utils/IPFSImage';
+import { DEFAULT_IMAGES } from '@/shared/config/constants';
 
 import Icons from '@/assets/svgs';
 import COLORS from '@/assets/colors';
@@ -15,7 +19,12 @@ import SwapScreen from '@/modules/swap/screens/SwapScreen';
 
 import { ChatListScreen } from '@/screens/sample-ui/chat';
 import ModuleScreen from '@/screens/Common/launch-modules-screen/LaunchModules';
-
+import Octicons from '@expo/vector-icons/Octicons';
+import SearchScreen from '@/screens/sample-ui/Threads/SearchScreen';
+import { MeteoraScreen } from '@/modules/meteora';
+import { ProfileScreen } from '@/screens/sample-ui/Threads/profile-screen';
+// import { TradesFeedScreen } from '@/screens/sample-ui/Threads/feed-screen';
+import { IPFSAwareImage } from '../utils/IPFSImage';
 // Create context for scroll-based UI hiding
 interface ScrollUIContextType {
   hideTabBar: () => void;
@@ -42,8 +51,8 @@ const platformIcons = {
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
 
-// Calculate tab positions based on 4-tab layout - adjusted for accuracy
-const TAB_WIDTH = width / 4;
+// Calculate tab positions based on 5-tab layout - adjusted for accuracy
+const TAB_WIDTH = width / 5;
 const FEED_TAB_CENTER = TAB_WIDTH * 1.5; // Second tab center (0-based index)
 
 const iconStyle = {
@@ -125,21 +134,22 @@ export default function MainTabs() {
     // This component is created once and captured in useMemo
     // It will only update when platformSwitchKey changes
     const Component = () => {
-      switch (currentPlatform) {
-        case 'threads':
-          return <FeedScreen key={`threads-${refreshKey}`} />;
-        case 'insta':
-          return <FeedScreen key={`insta-${refreshKey}`} />;
-        case 'chats':
-          // Navigate to ChatListScreen instead of showing ChatScreen directly
-          React.useEffect(() => {
-            navigation.navigate('ChatListScreen');
-          }, []);
-          // Return empty view as navigation will handle the rendering
-          return <View style={{ flex: 1 }} />;
-        default:
-          return <FeedScreen key={`threads-${refreshKey}`} />;
-      }
+      return <FeedScreen key={`threads-${refreshKey}`} />;
+      // switch (currentPlatform) {
+      //   case 'threads':
+      //     return <FeedScreen key={`threads-${refreshKey}`} />;
+      //   case 'insta':
+      //     return <FeedScreen key={`insta-${refreshKey}`} />;
+      //   case 'chats':
+      //     // Navigate to ChatListScreen instead of showing ChatScreen directly
+      //     React.useEffect(() => {
+      //       navigation.navigate('ChatListScreen');
+      //     }, []);
+      //     // Return empty view as navigation will handle the rendering
+      //     return <View style={{ flex: 1 }} />;
+      //   default:
+      //     return <FeedScreen key={`threads-${refreshKey}`} />;
+      // }
     };
 
     return Component;
@@ -149,7 +159,7 @@ export default function MainTabs() {
   const menuTranslateY = menuAnimation.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [50, 10, 0], // More nuanced movement
-  });
+  }); 
 
   const menuScale = menuAnimation.interpolate({
     inputRange: [0, 0.7, 1],
@@ -160,6 +170,12 @@ export default function MainTabs() {
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0.8, 1], // Faster fade in
   });
+
+  const handleProfilePress = () => {
+    navigation.navigate('ProfileScreen' as never);
+  };
+  // / Get the stored profile pic from Redux
+  const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
 
   return (
     <ScrollUIContext.Provider value={scrollUIContextValue}>
@@ -286,22 +302,23 @@ export default function MainTabs() {
             ),
           }}
         />
+        
         <Tab.Screen
-          name="Swap"
-          component={SwapScreen}
+          name="Search"
+          component={SearchScreen}
           options={{
             tabBarIcon: ({ focused, size }) => (
               <AnimatedTabIcon
                 focused={focused}
-                size={size * 1}
+                size={size * 1.25}
                 icon={
-                  Icons.SwapNavIcon as React.ComponentType<{
+                  Icons.SearchIcons as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
                 }
                 iconSelected={
-                  Icons.SwapNavIconSelected as React.ComponentType<{
+                  Icons.SearchIconssSelected as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
@@ -311,8 +328,35 @@ export default function MainTabs() {
             ),
           }}
         />
+        
         <Tab.Screen
-          name="Search"
+          name="createCoin"
+          component={MeteoraScreen}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <AnimatedTabIcon
+                focused={focused}
+                size={size * 1}
+                icon={
+                  Icons.CreateCoinIcon as React.ComponentType<{
+                    width: number;
+                    height: number;
+                  }>
+                }
+                iconSelected={
+                  Icons.CreateCoinIconSelected as React.ComponentType<{
+                    width: number;
+                    height: number;
+                  }>
+                }
+                style={iconStyle}
+              />
+            ),
+          }}
+        />
+
+        <Tab.Screen
+          name="chat"
           component={ChatListScreen}
           options={{
             tabBarIcon: ({ focused, size }) => (
@@ -320,13 +364,13 @@ export default function MainTabs() {
                 focused={focused}
                 size={size * 1.25}
                 icon={
-                  Icons.ChatIcon as React.ComponentType<{
+                  Icons.MyChatIcon as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
                 }
                 iconSelected={
-                  Icons.ChatIconSelected as React.ComponentType<{
+                  Icons.MyChatIconSelected as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
@@ -337,21 +381,35 @@ export default function MainTabs() {
           }}
         />
         <Tab.Screen
-          name="Modules"
-          component={ModuleScreen}
+          name="tokensCategories"
+          component={ProfileScreen}
           options={{
             tabBarIcon: ({ focused, size }) => (
+              // <TouchableOpacity onPress={handleProfilePress} style={headerStyles.profileContainer}>
+              //   <IPFSAwareImage
+              //     source={
+              //       storedProfilePic
+              //         ? getValidImageSource(storedProfilePic)
+              //         : currentUser && 'avatar' in currentUser && currentUser.avatar
+              //           ? getValidImageSource(currentUser.avatar)
+              //           : DEFAULT_IMAGES.user
+              //     }
+              //     style={headerStyles.profileImage}
+              //     defaultSource={DEFAULT_IMAGES.user}
+              //     key={Platform.OS === 'android' ? `profile-${Date.now()}` : 'profile'}
+              //   />
+              // </TouchableOpacity>
               <AnimatedTabIcon
                 focused={focused}
                 size={size * 1.2}
                 icon={
-                  Icons.RocketIcon as React.ComponentType<{
+                  Icons.CoinStatusIcon as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
                 }
                 iconSelected={
-                  Icons.RocketIconSelected as React.ComponentType<{
+                  Icons.CoinStatusIconSelected as React.ComponentType<{
                     width: number;
                     height: number;
                   }>
@@ -362,7 +420,7 @@ export default function MainTabs() {
           }}
         />
       </Tab.Navigator>
-    </ScrollUIContext.Provider>
+    </ScrollUIContext.Provider >
   );
 }
 
@@ -375,9 +433,9 @@ const platformStyles = StyleSheet.create({
     zIndex: 999,
     alignItems: 'center',
   },
-  menuContent: {
+  menuContent: { 
     flexDirection: 'row',
-    backgroundColor: COLORS.lighterBackground,
+    backgroundColor: COLORS.bottomTabBackground,
     borderRadius: 30,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -386,7 +444,7 @@ const platformStyles = StyleSheet.create({
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 10, 
     elevation: 7,
     borderWidth: 1,
     borderColor: COLORS.borderDarkColor,
@@ -424,7 +482,7 @@ const platformStyles = StyleSheet.create({
   tabBarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Platform.OS === 'android'
-      ? 'rgba(12, 16, 26, 0.95)' // Much higher opacity for Android
+      ? '#17274ff7' // Much higher opacity for Android
       : 'rgba(12, 16, 26, 0.75)', // Original opacity for iOS
   }
 });

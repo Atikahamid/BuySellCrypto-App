@@ -187,7 +187,7 @@ export class TransactionService {
             transaction,
             connection,
             normalizedProvider.walletAddress
-          );
+          ); 
           break;
         case 'turnkey':
           // Implementation for Turnkey would go here

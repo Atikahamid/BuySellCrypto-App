@@ -32,6 +32,13 @@ import raydiumLaunchpadRoutes from './routes/raydium/launchpad.routes';
 import nftRoutes from './routes/nft';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import luloRouter from './routes/lulo';
+import tradesRouter from './routes/tradesRoutes';
+import {startTradesIngestor} from './services/tradeServices';
+import { startIndexer } from './services/indexerService';
+import { BitqueryService } from './services/bitQueryService';
+import { custodialRouter } from './routes/custodialWalletsRoutes';
+
+require('dotenv').config({path: '../../.env'})
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -55,6 +62,10 @@ const server = http.createServer(app);
 
 // Initialize WebSocket service with improved options
 const webSocketService = new WebSocketService(server);
+
+// Initialize Bitquery service
+const bitqueryService = new BitqueryService(webSocketService);
+bitqueryService.start();
 
 // Add Socket.IO connection debug logging
 webSocketService.io.engine.on('connection', (socket: any) => {
@@ -213,6 +224,9 @@ app.use('/api/meteora', meteoraDBCRouter);
 app.use('/api/nft', nftRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/lulo', luloRouter);
+app.use('/api/trades', tradesRouter);
+app.use('/api/pastTrades', threadRouter);
+app.use('/api/custodial', custodialRouter);
 
 // app.post('/api/build-compressed-nft-listing-tx', async (req: any, res: any) => {
 //   try {
@@ -227,7 +241,7 @@ app.use('/api/lulo', luloRouter);
 // Start the Express server.
 // Note: We now try connecting to the database and running migrations,
 // but if these fail we log the error and continue to start the server.
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '8', 10);
 const HOST = '0.0.0.0'; // Critical for App Runner health checks
 
 (async function startServer() {
@@ -245,6 +259,11 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
     await testDbConnection();
     await runMigrationsAndStartServer();
     console.log('✅ Database and migrations completed successfully');
+
+    // await startIndexer(webSocketService.io);
+    // console.log('Indexer service started successfully');
+    // startTradesIngestor(webSocketService.io);
+    // console.log('Trades ingestor started successfully');
   } catch (error) {
     console.error('⚠️ Database/migration setup failed, but server is running:', error);
     // Server continues running even if DB fails - important for App Runner
