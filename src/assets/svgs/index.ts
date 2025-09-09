@@ -46,6 +46,27 @@ import tensor from './Vector.svg';
 import listedNft from './Vector (1).svg';
 import cross from "./Close.svg"
 import arrowRIght from "./Back.svg"
+import OneUser from './one-uer.svg';
+import TwoUsers from './two-users.svg';
+import PumpFun from './pumpfun-icon.svg';
+import GreenPumpfun from './green-pumpfun.svg';
+import WebIcon from './web-icon.svg';
+import Holders from './holders-icon.svg';
+import CandleStiks from './candlestick-icon.svg';
+import Trophy from './trophy-icon.svg';
+import Crown from './crown-icon.svg';
+
+import StarUserGreen from './star-user-green.svg';
+import StarUserRed from './star-user-red.svg';
+import CloudGreen from './cloud-green.svg';
+import CloudRed from './cloud-red.svg';
+import TargetGreen from './target-green.svg';
+import TargetRed from './target-red.svg';
+import GhostGreen from './ghost-green.svg';
+import GhostRed from './ghost-red.svg';
+import BlcoksGreen from './block-green.svg';
+import BlocksRed from './block-red.svg';
+
 // Login elements left
 import LeftCircle from './login-elements-left/circle.svg';
 import LeftStar from './login-elements-left/left-star.svg';
@@ -147,7 +168,26 @@ export default {
   arrowRIght,
   BarsBTN,
   ThunderBtn,
-  // Login elements left
+  OneUser,
+  TwoUsers,
+  PumpFun,
+  GreenPumpfun,
+  WebIcon,  // Login elements left
+  Holders,
+  CandleStiks,
+  Trophy,
+  Crown,
+
+  StarUserGreen,
+  StarUserRed,
+  CloudGreen,
+  CloudRed,
+  TargetGreen,
+  TargetRed,
+  GhostGreen,
+  GhostRed,
+  BlcoksGreen,
+  BlocksRed,
   LeftCircle,
   LeftStar,
   LeftEllipse,

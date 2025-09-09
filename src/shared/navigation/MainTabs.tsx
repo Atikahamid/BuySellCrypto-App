@@ -25,6 +25,7 @@ import { MeteoraScreen } from '@/modules/meteora';
 import { ProfileScreen } from '@/screens/sample-ui/Threads/profile-screen';
 // import { TradesFeedScreen } from '@/screens/sample-ui/Threads/feed-screen';
 import { IPFSAwareImage } from '../utils/IPFSImage';
+import { TokensScreen } from '@/screens/sample-ui/Threads/tokenPulse/TokenScreen';
 // Create context for scroll-based UI hiding
 interface ScrollUIContextType {
   hideTabBar: () => void;
@@ -329,9 +330,34 @@ export default function MainTabs() {
           }}
         />
         
-        <Tab.Screen
+        {/* <Tab.Screen
           name="createCoin"
           component={MeteoraScreen}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <AnimatedTabIcon
+                focused={focused}
+                size={size * 1}
+                icon={
+                  Icons.CreateCoinIcon as React.ComponentType<{
+                    width: number;
+                    height: number;
+                  }>
+                }
+                iconSelected={
+                  Icons.CreateCoinIconSelected as React.ComponentType<{
+                    width: number;
+                    height: number;
+                  }>
+                }
+                style={iconStyle}
+              />
+            ),
+          }}
+        /> */}
+        <Tab.Screen
+          name="launchCoin"
+          component={TokensScreen}
           options={{
             tabBarIcon: ({ focused, size }) => (
               <AnimatedTabIcon

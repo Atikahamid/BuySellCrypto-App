@@ -37,6 +37,7 @@ import {startTradesIngestor} from './services/tradeServices';
 import { startIndexer } from './services/indexerService';
 import { BitqueryService } from './services/bitQueryService';
 import { custodialRouter } from './routes/custodialWalletsRoutes';
+import tokenRelatedRouter from './routes/tokenListing/tokensRelatedRoutes';
 
 require('dotenv').config({path: '../../.env'})
 
@@ -64,8 +65,8 @@ const server = http.createServer(app);
 const webSocketService = new WebSocketService(server);
 
 // Initialize Bitquery service
-const bitqueryService = new BitqueryService(webSocketService);
-bitqueryService.start();
+// const bitqueryService = new BitqueryService(webSocketService);
+// bitqueryService.start();
 
 // Add Socket.IO connection debug logging
 webSocketService.io.engine.on('connection', (socket: any) => {
@@ -227,7 +228,7 @@ app.use('/api/lulo', luloRouter);
 app.use('/api/trades', tradesRouter);
 app.use('/api/pastTrades', threadRouter);
 app.use('/api/custodial', custodialRouter);
-
+app.use('/api/tokenRelatedData', tokenRelatedRouter);
 // app.post('/api/build-compressed-nft-listing-tx', async (req: any, res: any) => {
 //   try {
 //     const result = await buildCompressedNftListingTx(req.body);

@@ -1,354 +1,24 @@
+// File: src/services/bitQueryService.ts
 import WebSocket from "ws";
 import knex from "../db/knex";
+import fetch from "node-fetch";
 import { WebSocketService } from "../service/websocketService";
-import type { Server } from 'socket.io';
-import fetch from 'node-fetch';
+import { queryOne, NEWLY_CREATED_TOKENS_SUB, GET_TOKEN_ANALYTICS_QUERY } from "../queries/allQueryFile";
+
 const BITQUERY_WS_URL = "wss://streaming.bitquery.io/eap";
-const AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN!; // store in .env
-import { Trade } from "../types/interfaces";
-console.log("Auth token: ", AUTH_TOKEN);
-// GraphQL subscription query
-// const subscriptionQuery = `
-// subscription WalletTradeMonitoring($walletAddress: String!) {
-//   Solana {
-//     DEXTradeByTokens(
-//       where: {
-//         Transaction: { Result: { Success: true } }
-//         any: [
-//           { Trade: { Account: { Address: { is: $walletAddress } } } }
-//           { Trade: { Account: { Token: { Owner: { is: $walletAddress } } } } }
-//         ]
-//       }
-//     ) {
-//       Block { Time Slot }
-//       Trade {
-//         Currency { Name Symbol MintAddress Decimals Fungible Native }
-//         Amount PriceInUSD Price
-//         Side {
-//           Type Amount AmountInUSD
-//           Currency { Name Symbol MintAddress }
-//         }
-//         Account { Address Token { Owner } }
-//         Dex { ProtocolName ProtocolFamily ProgramAddress }
-//       }
-//       Transaction { Signature Signer FeeInUSD }
-//     }
-//   }
-// }`;
-// Replace the old subscriptionQuery with this:
-// const subscriptionQueryNew = `
-// subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
-//   dexTrades: Solana {
-//     DEXTradeByTokens(
-//       where: {
-//         Transaction: {Result: {Success: true}}
-//         Trade: {Currency: {
-//             Fungible: true 
-//             Symbol: { notIn: ["SOL", "WSOL", "USDC", "USDT"] }
-//             }
-//             }
-//         any: [
-//           {Trade: {Account: {Address: {in: $walletAddresses}}}}
-//         ]
-//       }
-//     ) {
-//       Block { Time Slot Height }
-//       Trade {
-//         Currency {
-//           Name Symbol MintAddress Decimals Fungible Uri
-//         }
-//         Amount PriceInUSD Price AmountInUSD
-//         Side {
-//           Type Amount AmountInUSD
-//           Currency { Name Symbol MintAddress Native }
-//         }
-//         Account { Address Token { Owner } }
-//       }
-//     }
-//   }
-//   pumpFunTrades: Solana {
-//     DEXTradeByTokens(
-//       where: {
-//         Transaction: {Result: {Success: true}}
-//         Trade: {Dex: {ProtocolName: {is: "pump"}} Currency: {Fungible: true}}
-//         any: [
-//           {Trade: {Account: {Address: {in: $walletAddresses}}}}
-//         ]
-//       }
-//     ) {
-//       Block { Time Slot Height }
-//       Trade {
-//         Currency {
-//           Name Symbol MintAddress Decimals Fungible Uri MetadataAddress
-//         }
-//         Amount PriceInUSD Price AmountInUSD
-//         Side {
-//           Type Amount AmountInUSD
-//           Currency { Name Symbol MintAddress }
-//         }
-//         Account { Address Token { Owner } }
-//       }
-//     }
-//   }
-//   letsBonkTrades: Solana {
-//     DEXTradeByTokens(
-//       where: {
-//         Transaction: {Result: {Success: true}}
-//         Trade: {Dex: {ProtocolName: {is: "raydium_launchpad"}} Currency: {Fungible: true}}
-//         any: [
-//           {Trade: {Account: {Address: {in: $walletAddresses}}}}
-//         ]
-//       }
-//     ) {
-//       Block { Time Slot Height }
-//       Trade {
-//         Currency {
-//           Name Symbol MintAddress Decimals Fungible Uri MetadataAddress
-//         }
-//         Amount PriceInUSD Price AmountInUSD
-//         Side {
-//           Type Amount AmountInUSD
-//           Currency { Name Symbol MintAddress }
-//         }
-//         Account { Address Token { Owner } }
-//       }
-//     }
-//   }
-// }
-// `;
-const LatestSubscriptionQuery = `
-subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
-  dexTrades: Solana {
-    DEXTradeByTokens(
-      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, Symbol: {notIn: ["SOL", "WSOL", "USDC", "USDT"]}}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-  pumpFunTrades: Solana {
-    DEXTradeByTokens(
-      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, Symbol: {notIn: ["SOL", "WSOL", "USDC", "USDT"]}}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-  letsBonkTrades: Solana {
-    DEXTradeByTokens(
-      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, Symbol: {notIn: ["SOL", "WSOL", "USDC", "USDT"]}}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-}
-`;
-const queryOne = `
-subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
-  dexTrades: Solana {
-    DEXTradeByTokens(
-      where: {
-        Transaction: {Result: {Success: true}},
-        Trade: {
-          Currency: {
-            Fungible: true,
-            MintAddress: {
-              notIn: [
-                "So11111111111111111111111111111111111111112", 
-                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 
-                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", 
-                "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"
-              ]
-            }
-          },
-          Amount: {gt: "0"}
-        },
-        any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]
-      }
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-}
-`;
-// const previousDataQuery = `
-// query FilteredTokenTradesAggregated($walletAddresses: [String!], $limit: Int = 50) {
-//   Solana {
-//     DEXTradeByTokens(
-//       limit: {count: $limit}
-//       orderBy: {descending: Block_Time}
-//       where: {
-//         Transaction: {Result: {Success: true}}
-//         Trade: {
-//           Currency: {
-//             Fungible: true
-//             MintAddress: {
-//               notIn: [
-//                 "So11111111111111111111111111111111111111112",  # WSOL
-//                 "11111111111111111111111111111111111111111",   # SOL  
-//                 "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", # USDC
-//                 "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", # USDT
-//                 "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"  # USDC (Circle)
-//               ]
-//             }
-//           }
-//         }
-//         any: [
-//           {Trade: {Account: {Address: {in: $walletAddresses}}}},
-//           {Trade: {Account: {Token: {Owner: {in: $walletAddresses}}}}},
-//           {Transaction: {Signer: {in: $walletAddresses}}}
-//         ]
-//       }
-//     ) {
-//       Block {
-//         Time
-//         Slot
-//       }
-//       Transaction {
-//         Signature
-//         Signer
-//         FeeInUSD
-//       }
-//       Trade {
-//         Currency {
-//           Name
-//           Symbol
-//           MintAddress
-//           Decimals
-//           Fungible
-//           Native
-//         }
-//         Amount
-//         Price
-//         PriceInUSD
-//         Side {
-//           Type
-//           Amount  
-//           AmountInUSD
-//           Currency {
-//             Name
-//             Symbol
-//             MintAddress
-//           }
-//         }
-//         Account {
-//           Address
-//           Token {
-//             Owner
-//           }
-//         }
-//         Dex {
-//           ProtocolName
-//           ProtocolFamily
-//           ProgramAddress
-//         }
-//       }
-      
-//       # Trade Aggregations
-//       buyVolume: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: buy}}}})
-//       sellVolume: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: sell}}}})
-//       totalVolume: sum(of: Trade_Side_AmountInUSD)
-//       tradeCount: count
-//     }
-//   }
-// }`;
+const AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN!;
 
 async function decodeMetadata(uri: string) {
   try {
     let url = uri;
-
-    if (uri.startsWith("ipfs://")) {
-      url = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
-    } else if (uri.startsWith("ar://")) {
-      url = uri.replace("ar://", "https://arweave.net/");
-    }
+    if (uri.startsWith("ipfs://")) url = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+    if (uri.startsWith("ar://")) url = uri.replace("ar://", "https://arweave.net/");
 
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch metadata: ${res.statusText}`);
-    const data = await res.json();
-
-    return {
-      name: data.name,
-      symbol: data.symbol,
-      image: data.image,
-      description: data.description,
-    };
+    return await res.json();
   } catch (err) {
-    console.error("Error decoding metadata:", err);
+    console.error("decodeMetadata error:", err);
     return null;
   }
 }
@@ -356,87 +26,68 @@ async function decodeMetadata(uri: string) {
 export class BitqueryService {
   private webSocketService: WebSocketService;
   private ws: WebSocket | null = null;
+  private analyticsCache: Map<string, any> = new Map();
 
   constructor(webSocketService: WebSocketService) {
     this.webSocketService = webSocketService;
   }
 
   async start() {
-    // Fetch wallet addresses from DB
     const wallets = await knex("watched_addresses").select("address", "username", "profile_picture_url");
-    const walletAddresses = wallets.map((w: { address: string }) => w.address);
+    const walletAddresses = wallets.map((w) => w.address);
 
-    //build lookup map for quick enrichment
-    const walletMap = wallets.reduce((map: any, w: any) => {
-      map[w.address] = { username: w.username, profileUrl: w.profile_picture_url };
-      return map;
-    }, {});
+    const walletMap: Record<string, { username: string; profileUrl: string }> = {};
+    wallets.forEach((w) => {
+      walletMap[w.address] = { username: w.username, profileUrl: w.profile_picture_url };
+    });
 
-    console.log("wallet map: ", walletMap);
-
-    console.log("📡 Subscribing to wallets:", walletAddresses);
-
-    this.subscribeToWallets(walletAddresses, walletMap);
+    this.connect(walletAddresses, walletMap);
   }
 
-  private subscribeToWallets(walletAddresses: string[], walletMap: any) {
-    if (this.ws) return; // already connected
+  private connect(walletAddresses: string[], walletMap: Record<string, any>) {
+    if (this.ws) return;
 
-    const ws = new WebSocket(`${BITQUERY_WS_URL}?token=${AUTH_TOKEN}`, [
-      "graphql-ws",
-    ]);
+    const ws = new WebSocket(`${BITQUERY_WS_URL}?token=${AUTH_TOKEN}`, ["graphql-ws"]);
     this.ws = ws;
 
     ws.on("open", () => {
-      console.log("✅ Connected to Bitquery (multi-wallet)");
+      console.log("✅ Connected to Bitquery");
       ws.send(JSON.stringify({ type: "connection_init" }));
     });
 
-    ws.on("message", (raw) => {
+    ws.on("message", async (raw) => {
       const msg = JSON.parse(raw.toString());
-
       switch (msg.type) {
         case "connection_ack":
+          // subscribe to trades
           ws.send(
             JSON.stringify({
               id: "multi-wallet-sub",
               type: "start",
-              payload: {
-                query: queryOne,
-                variables: { walletAddresses },
-              },
+              payload: { query: queryOne, variables: { walletAddresses } },
+            })
+          );
+          // subscribe to new token creations
+          ws.send(
+            JSON.stringify({
+              id: "new-tokens-sub",
+              type: "start",
+              payload: { query: NEWLY_CREATED_TOKENS_SUB },
             })
           );
           break;
 
         case "data":
-          const payload = msg.payload.data;
-          if (!payload) return;
-
-          // Handle DEX trades
-          if (payload.dexTrades?.DEXTradeByTokens) {
-            payload.dexTrades.DEXTradeByTokens.forEach((trade: any) =>
-              this.handleTrade(trade, "DEX", walletMap)
-            );
+          if (msg.id === "multi-wallet-sub") {
+            this.handleTrades(msg.payload.data, walletMap);
           }
-
-          // Handle PumpFun trades
-          if (payload.pumpFunTrades?.DEXTradeByTokens) {
-            payload.pumpFunTrades.DEXTradeByTokens.forEach((trade: any) =>
-              this.handleTrade(trade, "PUMPFUN", walletMap)
-            );
-          }
-
-          // Handle LetsBonk trades
-          if (payload.letsBonkTrades?.DEXTradeByTokens) {
-            payload.letsBonkTrades.DEXTradeByTokens.forEach((trade: any) =>
-              this.handleTrade(trade, "LETSBONK", walletMap)
-            );
+          if (msg.id === "new-tokens-sub") {
+            await this.handleNewTokens(msg.payload.data);
           }
           break;
 
         case "error":
-          console.error("❌ Bitquery error:", msg.payload);
+          console.error("Bitquery error:", msg.payload);
           break;
       }
     });
@@ -444,48 +95,164 @@ export class BitqueryService {
     ws.on("close", () => {
       console.warn("⚠️ Bitquery WS closed, retrying...");
       this.ws = null;
-      setTimeout(() => this.subscribeToWallets(walletAddresses, walletMap), 5000);
+      setTimeout(() => this.connect(walletAddresses, walletMap), 5000);
     });
   }
 
- private async handleTrade(trade: any, platform: string, walletMap: any) {
-  let metadata = null;
-
-  if (trade.Trade.Currency?.Uri) {
-    metadata = await decodeMetadata(trade.Trade.Currency.Uri);
+  private handleTrades(payload: any, walletMap: Record<string, any>) {
+    const trades = payload?.Solana?.DEXTradeByTokens ?? [];
+    trades.forEach((trade: any) => {
+      const walletAddr = trade.Trade.Account.Address;
+      const userMeta = walletMap[walletAddr] || { username: "unknown", profileUrl: "" };
+      const formatted = {
+        walletAddress: walletAddr,
+        username: userMeta.username,
+        userProfilePic: userMeta.profileUrl,
+        action: trade.Trade.Side.Type?.toLowerCase(),
+        token: {
+          name: trade.Trade.Side.Currency.Name,
+          symbol: trade.Trade.Side.Currency.Symbol,
+          mintAddress: trade.Trade.Side.Currency.MintAddress,
+        },
+        time: trade.Block.Time,
+      };
+      this.webSocketService.io.emit("token_transfer", formatted);
+      console.log("🚀 New trade:", formatted);
+    });
   }
 
-  const walletAddr = trade.Trade.Account.Address;
-  const userMeta = walletMap[walletAddr];
-  console.log("userMeta: ", userMeta);
+  private async handleNewTokens(payload: any) {
+    const instructions = payload?.Solana?.Instructions ?? [];
+    for (const inst of instructions) {
+      const accounts = inst?.Instruction?.Accounts ?? [];
+      const accountNames = inst?.Instruction?.Program?.AccountNames ?? [];
 
-  // ✅ Conform to Trade interface
-  const formatted: Trade = {
-    walletAddress: walletAddr,
-    username: userMeta.username,
-    userProfilePic: userMeta.profileUrl,
-    action: trade.Trade.Side.Type?.toLowerCase() === "buy" ? "buy" : "sell",
+      // Map accountNames to Accounts by index
+      const accountMap: Record<string, any> = {};
+      accountNames.forEach((name: string, idx: number) => {
+        accountMap[name] = accounts[idx];
+      });
 
-    token: {
-      name: trade.Trade.Side.Currency.Name,
-      symbol: trade.Trade.Side.Currency.Symbol,
-      mintAddress: trade.Trade.Side.Currency.MintAddress,
-      imageUrl: metadata?.image || null,
-    },
+      // Mint & owner
+      const mint = accountMap["mint"]?.Token?.Mint || null;
+      const owner = accountMap["mint"]?.Token?.Owner || null;
+      if (!mint) continue;
 
-    time: trade.Block.Time,
+      // Fee payer
+      const feePayer = inst?.Transaction?.FeePayer || null;
 
-    // ✅ placeholders you’ll calculate later
-    pnl: 0, // to calculate later
-    solPrice: trade.Trade.Amount || null, // price at trade time
-    marketCapAtTrade: 0, // fetch from external API if needed
-    currentMarketCap: 0, // fetch live
-  };
+      // Parse args JSON
+      let name: string | null = null;
+      let symbol: string | null = null;
+      let uri: string | null = null;
 
-  console.log(`🚀 New ${platform} trade for wallet ${formatted.walletAddress}`);
-  console.log(formatted);
+      const args = inst?.Instruction?.Program?.Arguments ?? [];
+      const createArgs = args.find((a: any) => a.Name === "createMetadataAccountArgsV3");
+      if (createArgs?.Value?.json) {
+        try {
+          const parsed = JSON.parse(createArgs.Value.json);
+          name = parsed.data?.name ?? null;
+          symbol = parsed.data?.symbol ?? null;
+          uri = parsed.data?.uri ?? null;
+        } catch (err) {
+          console.error("Failed to parse metadata args JSON:", err);
+        }
+      }
 
-  this.webSocketService.io.emit("token_transfer", formatted);
-}
+      // Decode metadata (IPFS/Arweave)
+      let image: string | null = null;
+      let createdOn: string | null = null;
+      let twitterX: string | null = null;
+
+      if (uri) {
+        const meta = await decodeMetadata(uri);
+        if (meta) {
+          image = meta.image || null;
+          name = meta.name || name;
+          symbol = meta.symbol || symbol;
+          createdOn = meta.createdOn || null;
+          twitterX = meta.twitter || null;
+        }
+      }
+
+      // Fetch analytics
+      const analytics = await this.getTokenAnalytics(mint);
+
+      const event = {
+        mint,
+        owner,
+        name,
+        symbol,
+        uri,
+        image,
+        createdOn,
+        twitterX,
+        blockTime: inst?.Block?.Time,
+        slot: inst?.Block?.Slot,
+        feePayer,
+        analytics,
+      };
+
+      this.webSocketService.io.emit("new_token_created", event);
+      // console.log("🆕 New token:", event);
+    }
+  }
+
+  private async getTokenAnalytics(mint: string) {
+    if (this.analyticsCache.has(mint)) {
+      return this.analyticsCache.get(mint);
+    }
+
+    try {
+      const res = await fetch("https://streaming.bitquery.io/eap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${AUTH_TOKEN}`,
+        },
+        body: JSON.stringify({
+          query: GET_TOKEN_ANALYTICS_QUERY,
+          variables: { tokenMint: mint },
+        }),
+      });
+
+      const json = await res.json();
+      // console.log("analytics response:", JSON.stringify(json, null, 2));
+
+      const analytics = json.data?.Solana || {};
+
+      // Safely extract values with fallbacks
+      const allTimeStats = analytics.all_time_trading_stats?.[0] ?? {};
+      const currentStats = analytics.current_trading_stats?.[0] ?? {};
+      const holderStats = analytics.holder_count?.[0] ?? {};
+
+      const analyticsData = {
+        totalBuys: allTimeStats.total_buys ?? 0,
+        totalSells: allTimeStats.total_sells ?? 0,
+        totalTrades: allTimeStats.total_trades ?? 0,
+        allTimeVolumeUSD: allTimeStats.current_volume_usd ?? 0,
+
+        currentVolumeUSD: currentStats.current_volume_usd ?? 0,
+        holderCount: holderStats.total_holders ?? 0,
+      };
+
+      this.analyticsCache.set(mint, analyticsData);
+
+      // Auto-expire after 5 minutes
+      setTimeout(() => this.analyticsCache.delete(mint), 5 * 60 * 1000);
+
+      return analyticsData;
+    } catch (err) {
+      console.error("getTokenAnalytics error:", err);
+      return {
+        totalBuys: 0,
+        totalSells: 0,
+        totalTrades: 0,
+        allTimeVolumeUSD: 0,
+        currentVolumeUSD: 0,
+        holderCount: 0,
+      };
+    }
+  }
 
 }

@@ -13,7 +13,7 @@ import axios from 'axios';
 import knex from '../../db/knex';
 import { Trade } from '../../types/interfaces';
 const threadRouter = Router();
-
+import { SIMPLE_PAST_TRADES_QUERY } from '../../queries/allQueryFile';
 // const walletAddresses = [
 //   "9HCTuTPEiQvkUtLmTZvK6uch4E3pDynwJTbNw6jLhp9z",
 //   "6kbwsSY4hL6WVadLRLnWV2irkMN2AvFZVAS8McKJmAtJ",
@@ -22,38 +22,7 @@ const threadRouter = Router();
 //   "GJA1HEbxGnqBhBifH9uQauzXSB53to5rhDrzmKxhSU65"
 // ];
 
-const SIMPLE_PAST_TRADES_QUERY = `
-query SimplePastTrades($walletAddresses: [String!]) {
-  Solana {
-    DEXTradeByTokens(
-      limit: {count: 20}
-      orderBy: {descending: Block_Time}
-      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, MintAddress: {notIn: ["So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"]}}, Amount: {gt: "0"}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-}
-`;
+
 async function decodeMetadata(uri: string | undefined) {
   if (!uri) return null;
   try {
