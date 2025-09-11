@@ -393,24 +393,24 @@ export default function TokenCreationForm({
                 {/* <Text style={styles.sectionTitle}>Basic Token Information</Text> */}
 
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Name</Text>
+                    {/* <Text style={styles.label}>Token Name</Text> */}
                     <TextInput
                         style={styles.input}
                         value={tokenName}
                         onChangeText={setTokenName}
-                        placeholder="e.g. My Awesome Token"
+                        placeholder="Token Name"
                         placeholderTextColor={COLORS.greyDark}
                         keyboardAppearance="dark"
                     />
                 </View>
 
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Symbol</Text>
+                    {/* <Text style={styles.label}>Token Symbol</Text> */}
                     <TextInput
                         style={styles.input}
                         value={tokenSymbol}
                         onChangeText={setTokenSymbol}
-                        placeholder="e.g. MAT"
+                        placeholder="Token Symbol"
                         placeholderTextColor={COLORS.greyDark}
                         maxLength={10}
                         keyboardAppearance="dark"
@@ -418,12 +418,12 @@ export default function TokenCreationForm({
                 </View>
 
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Description</Text>
+                    {/* <Text style={styles.label}>Description</Text> */}
                     <TextInput
                         style={[styles.input, { height: 70 }]}
                         value={tokenDescription}
                         onChangeText={setTokenDescription}
-                        placeholder="Describe your token's purpose"
+                        placeholder="Description"
                         placeholderTextColor={COLORS.greyDark}
                         multiline
                         keyboardAppearance="dark"
@@ -431,12 +431,12 @@ export default function TokenCreationForm({
                 </View>
 
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Website (Optional)</Text>
+                    {/* <Text style={styles.label}>Website (Optional)</Text> */}
                     <TextInput
                         style={styles.input}
                         value={tokenWebsite}
                         onChangeText={setTokenWebsite}
-                        placeholder="e.g. https://example.com"
+                        placeholder="Website (Optional)"
                         placeholderTextColor={COLORS.greyDark}
                         keyboardAppearance="dark"
                     />
@@ -445,7 +445,7 @@ export default function TokenCreationForm({
 
                 {/* Token image section - improved UI */}
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Image</Text>
+                    {/* <Text style={styles.label}>Token Image</Text> */}
                     <View style={styles.imageUploadContainer}>
                         {imageUri ? (
                             <View style={styles.imagePreviewContainer}>
@@ -531,12 +531,12 @@ export default function TokenCreationForm({
                 {showSocials && (
                     <View style={styles.socialsContainer}>
                         <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Twitter (Optional)</Text>
+                            {/* <Text style={styles.label}>Twitter (Optional)</Text> */}
                             <TextInput
                                 style={styles.input}
                                 value={tokenTwitter}
                                 onChangeText={setTokenTwitter}
-                                placeholder="@username"
+                                placeholder="Twitter (Optional)"
                                 placeholderTextColor={COLORS.greyDark}
                                 editable={!isCreating}
                                 keyboardAppearance="dark"
@@ -544,12 +544,12 @@ export default function TokenCreationForm({
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Telegram (Optional)</Text>
+                            {/* <Text style={styles.label}>Telegram (Optional)</Text> */}
                             <TextInput
                                 style={styles.input}
                                 value={tokenTelegram}
                                 onChangeText={setTokenTelegram}
-                                placeholder="t.me/community"
+                                placeholder="Telegram (Optional)"
                                 placeholderTextColor={COLORS.greyDark}
                                 editable={!isCreating}
                                 keyboardAppearance="dark"
@@ -571,12 +571,12 @@ export default function TokenCreationForm({
                 {/* Buy amount input (only shown when toggle is on) */}
                 {buyOnCreate && (
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Amount to buy (SOL)</Text>
+                        {/* <Text style={styles.label}>Amount to buy (SOL)</Text> */}
                         <TextInput
                             style={styles.input}
                             value={buyAmount}
                             onChangeText={setBuyAmount}
-                            placeholder="e.g. 1"
+                            placeholder="Amount to buy (SOL)"
                             placeholderTextColor={COLORS.greyDark}
                             keyboardType="numeric"
                             keyboardAppearance="dark"

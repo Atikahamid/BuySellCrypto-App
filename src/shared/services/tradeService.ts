@@ -15,7 +15,8 @@ export interface Trade {
     pnl: number;
     solPrice: number;
     marketCapAtTrade: number;
-    currentMarketCap: number;
+    currentMarketCap: number; 
+    priceChange24h: number;
 }
 
 

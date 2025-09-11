@@ -15,8 +15,10 @@ interface TokenCardProps {
 }
 
 export default function TokenCard({ name, symbol, logo, mc, liq, vol, change }: TokenCardProps) {
-  const changeColor = change >= 0 ? '#4CAF50' : '#FF4C4C';
-  const formattedChange = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+  const isPositive = change >= 0;
+  const changeColor = isPositive ? '#4CAF50' : '#FF4C4C';
+  const formattedChange = `${isPositive ? '+' : ''}${change.toFixed(2)}%`;
+  const arrow = isPositive ? '↑' : '↓';
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8}>
@@ -38,12 +40,16 @@ export default function TokenCard({ name, symbol, logo, mc, liq, vol, change }: 
           <Text style={styles.name}>{name}</Text>
         </View>
 
-        <Text style={styles.stats}>{mc} MC   {liq} LIQ   {vol} VOL</Text>
+        <Text style={styles.stats}>
+          {mc} MC   {liq} LIQ   {vol} VOL
+        </Text>
       </View>
 
       {/* Change */}
       <View style={styles.rightSide}>
-        <Text style={[styles.change, { color: changeColor }]}>{formattedChange}</Text>
+        <Text style={[styles.change, { color: changeColor }]}>
+          {arrow} {formattedChange}
+        </Text>
         <View style={styles.solanaOne}>
           <Image
             source={SolanaIconIMage}
@@ -52,9 +58,7 @@ export default function TokenCard({ name, symbol, logo, mc, liq, vol, change }: 
           />
           <Text style={styles.solanaOneText}> 1</Text>
         </View>
-
       </View>
-
     </TouchableOpacity>
   );
 }
@@ -79,11 +83,11 @@ const styles = StyleSheet.create({
   },
   rightSide: {
     flexDirection: 'column',
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
   },
   fallbackImage: {
     width: 16,
-    height: 16
+    height: 16,
   },
   solanaOne: {
     flexDirection: 'row',
@@ -95,11 +99,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#25292eff',
     marginVertical: 8,
-    // marginHorizontal: 8,
     paddingVertical: 4,
-    paddingHorizontal: 4
+    paddingHorizontal: 4,
   },
-  solanaOneText:{
+  solanaOneText: {
     color: COLORS.white,
   },
   logoContainer: {

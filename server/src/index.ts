@@ -38,6 +38,7 @@ import { startIndexer } from './services/indexerService';
 import { BitqueryService } from './services/bitQueryService';
 import { custodialRouter } from './routes/custodialWalletsRoutes';
 import tokenRelatedRouter from './routes/tokenListing/tokensRelatedRoutes';
+import { connectRedis} from './redis/redisClient';
 
 require('dotenv').config({path: '../../.env'})
 
@@ -259,6 +260,7 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
   try {
     await testDbConnection();
     await runMigrationsAndStartServer();
+    // await connectRedis();
     console.log('✅ Database and migrations completed successfully');
 
     // await startIndexer(webSocketService.io);

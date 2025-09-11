@@ -17,46 +17,42 @@ import { useNavigation } from "@react-navigation/native";
 import COLORS from "@/assets/colors";
 import { LinearGradient } from "expo-linear-gradient";
 
-// ✅ Correct import for token fetchers
+// ✅ Import token fetchers
 import {
   fetchXstockTokens,
   fetchLSTsTokens,
   fetchBlueChipMemes,
   fetchAITokens,
+  fetchTrendingTokens,
+  fetchPopularTokens,
 } from "./tokenPulse/tokenServicefile";
 
 import { ensureCompleteTokenInfo } from "@/modules/data-module";
 
+// ✅ Import your SVG icons
+import Icons from '../../../assets/svgs'; // assuming index.ts exports all
+
 const TABS = [
-  { key: "Trending", label: "Trending" },
-  { key: "Popular", label: "Popular" },
-  { key: "Featured", label: "Featured" },
-  { key: "Stocks", label: "Stocks" },
-  { key: "AI", label: "AI" },
-  { key: "LSTs", label: "LSTs" },
-  { key: "BlueChip", label: "Blue Chip Memes" },
-  { key: "Holding", label: "Holding" },
+  { key: "Trending", label: "Trending", icon: Icons.TrendingIcon, darkIcon: Icons.TrendingDark },
+  { key: "Popular", label: "Popular", icon: Icons.PopularIcon, darkIcon: Icons.Populardark },
+  { key: "Featured", label: "Featured", icon: Icons.featuredicon, darkIcon: Icons.FeaturedDark },
+  { key: "Stocks", label: "Stocks", icon: Icons.StocksIcon, darkIcon: Icons.StocksDark },
+  { key: "AI", label: "AI", icon: Icons.AiIcon, darkIcon: Icons.Aidark },
+  { key: "LSTs", label: "LSTs", icon: Icons.LstsIcon, darkIcon: Icons.lstDark },
+  { key: "BlueChip", label: "Blue Chip Memes", icon: Icons.Bluechipicon, darkIcon: Icons.BlueChipDark },
+  { key: "Holding", label: "Holding", icon: Icons.StocksIcon, darkIcon: Icons.StocksDark }, // placeholder
 ];
 
-// static placeholder data for non-API tabs
 const TAB_DATA: Record<string, any[]> = {
-  Trending: [
-    { name: "Baby Troll", symbol: "TROLL", mc: "$31.46K", liq: "$99.07K", vol: "$5.67M", change: 192.44 },
-    { name: "Pengu", symbol: "PENGU", mc: "$2.21B", liq: "$8.28M", vol: "$2.79M", change: 0.30 },
-  ],
-  Popular: [
-    { name: "BOOG", symbol: "BOOG", mc: "$8.32K", liq: "$11.74K", vol: "$2.74M", change: -93.78 },
-    { name: "TAELS", symbol: "TAELS", mc: "$9.13K", liq: "$13.06K", vol: "$2.55M", change: -59.82 },
-  ],
   Featured: [
     { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
   ],
-  AI: [{ name: "AICoin", symbol: "AI", mc: "$1.2M", liq: "$300K", vol: "$50K", change: 12.3 }],
-  BlueChip: [{ name: "Doge", symbol: "DOGE", mc: "$9B", liq: "$2B", vol: "$800M", change: 4.5 }],
-  Holding: [{ name: "MyHold", symbol: "HOLD", mc: "$500K", liq: "$50K", vol: "$20K", change: -2.1 }],
+  AI: [],
+  BlueChip: [],
+  Holding: [],
 };
 
-function formatCompactNumber(value: number | string | undefined): string {
+export function formatCompactNumber(value: number | string | undefined): string {
   const num = Number(value ?? 0);
   if (isNaN(num)) return "0";
   if (num >= 1e12) return `${(num / 1e12).toFixed(1)}T`;
@@ -76,7 +72,6 @@ export default function SearchScreen() {
     navigation.goBack();
   }, [navigation]);
 
-  // Fetch when tab changes
   useEffect(() => {
     ensureCompleteTokenInfo;
     let mounted = true;
@@ -84,69 +79,46 @@ export default function SearchScreen() {
     async function load() {
       setLoading(true);
       setTokens([]);
+
       try {
-        if (activeTab === "Stocks") {
-          const res = await fetchXstockTokens();
-          if (!mounted) return;
-          setTokens(
-            res.map((t: any) => ({
-              name: t.name ?? "Unknown",
-              symbol: t.symbol ?? "",
-              logo: t.image,
-              mc: t.marketCap ? `$${formatCompactNumber(t.marketCap)}` : "-",
-              liq: t.liquidity ? `$${formatCompactNumber(t.liquidity)}` : "-",
-              vol: `$${formatCompactNumber(t.totalVolume ?? 0)}`,
-              change: 0,
-            }))
-          );
+        let res: any[] = [];
+
+        if (activeTab === "Trending") {
+          res = await fetchTrendingTokens();
+        } else if (activeTab === "Popular") {
+          res = await fetchPopularTokens();
+        } else if (activeTab === "Stocks") {
+          res = await fetchXstockTokens();
         } else if (activeTab === "LSTs") {
-          const res = await fetchLSTsTokens();
-          if (!mounted) return;
-          setTokens(
-            res.map((t: any) => ({
-              mint: t.mint,
-              name: t.name ?? "Unknown",
-              symbol: t.symbol ?? "",
-              logo: t.image,
-              mc: "-",
-              liq: "-",
-              vol: `$${formatCompactNumber(t.volume7dUSD ?? 0)}`,
-              change: 0,
-            }))
-          );
+          res = await fetchLSTsTokens();
         } else if (activeTab === "BlueChip") {
-          const res = await fetchBlueChipMemes();
-          if (!mounted) return;
-          setTokens(
-            res.map((t: any) => ({
-              mint: t.mint,
-              name: t.name ?? "Unknown",
-              symbol: t.symbol ?? "",
-              logo: t.image,
-              mc: t.marketcap ? `$${formatCompactNumber(t.marketcap)}` : "-",
-              liq: "-",
-              vol: "-",
-              change: 0,
-            }))
-          );
+          res = await fetchBlueChipMemes();
         } else if (activeTab === "AI") {
-          const res = await fetchAITokens();
-          if (!mounted) return;
-          setTokens(
-            res.map((t: any) => ({
-              mint: t.mint,
-              name: t.name ?? "Unknown",
-              symbol: t.symbol ?? "",
-              logo: t.image,
-              mc: t.marketCap ? `$${formatCompactNumber(t.marketCap)}` : "-",
-              liq: t.liquidity ? `$${formatCompactNumber(t.liquidity)}` : "-",
-              vol: "-",
-              change: 0,
-            }))
-          );
+          res = await fetchAITokens();
         } else {
           setTokens(TAB_DATA[activeTab] || []);
+          setLoading(false);
+          return;
         }
+
+        if (!mounted) return;
+
+        setTokens(
+          res.map((t: any) => ({
+            mint: t.mint,
+            name: t.name ?? "Unknown",
+            symbol: t.symbol ?? "",
+            logo: t.image,
+            mc: t.marketcap ? `$${formatCompactNumber(t.marketcap)}` : "-",
+            liq: t.liquidity ? `$${formatCompactNumber(t.liquidity)}` : "-",
+            vol: t.volume
+              ? `$${formatCompactNumber(t.volume7dUSD)}`
+              : t.totalVolume
+              ? `$${formatCompactNumber(t.totalVolume)}`
+              : "-",
+            change: t.priceChange24h ?? 0,
+          }))
+        );
       } catch (err) {
         console.error("[SearchScreen] Error loading tokens:", err);
         if (mounted) setTokens([]);
@@ -179,17 +151,23 @@ export default function SearchScreen() {
             style={styles.tabBar}
             contentContainerStyle={{ paddingHorizontal: 8 }}
           >
-            {TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tab, activeTab === tab.key && styles.activeTab]}
-                onPress={() => setActiveTab(tab.key)}
-              >
-                <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {TABS.map((tab) => {
+              const IconComp = activeTab === tab.key ? tab.icon : tab.darkIcon;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tab, activeTab === tab.key && styles.activeTab]}
+                  onPress={() => setActiveTab(tab.key)}
+                >
+                  <View style={styles.tabContent}>
+                    <IconComp width={16} height={16} />
+                    <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+                      {tab.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {/* Token list */}
@@ -231,14 +209,21 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   tab: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     marginRight: 18,
     borderRadius: 16,
   },
   activeTab: {
-    backgroundColor: "#2E7D32",
-    paddingBottom: 5,
+    backgroundColor: "#101937ff",
+    borderWidth: 1,
+    borderColor: "#3b4551ff",
+    paddingBottom: 3,
     paddingTop: 3,
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   tabText: {
     color: "#AAA",

@@ -760,149 +760,141 @@ query VerifiedLSTsOnly {
 }
 `;
 
-export const TRENDING_TOKENS = `
-query TrendingTokensVolumeAnalysis {
+export const TRENDING_TOKENS_QUERY = `
+query TrendingByActivitySimple {
   Solana {
-    # Get 24-hour data grouped by 1-hour intervals
-    hourly_volumes_24h: DEXTradeByTokens(
-      limit: {count: 25}
+    # ========== 1 MINUTE ==========
+    trending_1min: DEXTradeByTokens(
+      limit: {count: 50}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
       where: {
-        Block: {Time: {since_relative: {hours_ago: 24}}},
-        Trade: {
-          Currency: {
-            Name: {not: ""},
-            MintAddress: {
-              notIn: [
-                "So11111111111111111111111111111111111111112",
-                "11111111111111111111111111111111",
-                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
-                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-              ]
-            }
-          }
-        },
+        Block: {Time: {since_relative: {minutes_ago: 1}}}
+        Trade: {Currency: {MintAddress: {notIn: ["So11111111111111111111111111111111111111112","11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB","cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij","3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh","7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"]}}}
         Transaction: {Result: {Success: true}}
       }
-      orderBy: {descendingByField: "volume_usd"}
     ) {
-      # Group by token and hour
-      Trade {
-        Currency {
-          Name
-          Symbol
-          MintAddress
-          Decimals
-        }
-      }
-      
-      # Time grouping - hourly intervals
-      Block {
-        Time(interval: {in: hours, count: 1})
-      }
-      
-      # Volume metrics for each hour
-      volume_usd: sum(of: Trade_Side_AmountInUSD)
-      trades_count: count
-      unique_traders: count(distinct: Transaction_Signer)
-      
-      # Additional metrics
-      buy_volume: sum(
-        of: Trade_Side_AmountInUSD
-        if: {Trade: {Side: {Type: {is: buy}}}}
-      )
-      sell_volume: sum(
-        of: Trade_Side_AmountInUSD
-        if: {Trade: {Side: {Type: {is: sell}}}}
-      )
-      buys: count(if: {Trade: {Side: {Type: {is: buy}}}})
-      sells: count(if: {Trade: {Side: {Type: {is: sell}}}})
+      Trade {Currency {Name Symbol MintAddress Uri}}
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
     }
-    
-    # Get latest 1-hour volume for comparison
-    latest_1h_volume: DEXTradeByTokens(
-      limit: {count: 25}
+
+    # ========== 5 MINUTES ==========
+    trending_5min: DEXTradeByTokens(
+      limit: {count: 50}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
       where: {
-        Block: {Time: {since_relative: {hours_ago: 1}}},
-        Trade: {
-          Currency: {
-            Name: {not: ""},
-            MintAddress: {
-              notIn: [
-                "So11111111111111111111111111111111111111112",
-                "11111111111111111111111111111111",
-                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
-                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-              ]
-            }
-          }
-        },
+        Block: {Time: {since_relative: {minutes_ago: 5}}}
+        Trade: {Currency: {MintAddress: {notIn: ["So11111111111111111111111111111111111111112","11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB","cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij","3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh","7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"]}}}
         Transaction: {Result: {Success: true}}
       }
-      orderBy: {descendingByField: "current_1h_volume"}
     ) {
-      Trade {
-        Currency {
-          Name
-          Symbol
-          MintAddress
-          Decimals
-          Uri
-          UpdateAuthority
-          IsMutable
-        }
-        Market {
-          MarketAddress
-        }
-        Dex {
-          ProtocolName
-          ProtocolFamily
-          ProgramAddress
-        }
-        # Price data for trend analysis
-        start_price: PriceInUSD(minimum: Block_Time)
-        current_price: PriceInUSD(maximum: Block_Time)
+      Trade {Currency {Name Symbol MintAddress Uri}}
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
+    }
+
+    # ========== 30 MINUTES ==========
+    trending_30min: DEXTradeByTokens(
+      limit: {count: 50}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
+      where: {
+        Block: {Time: {since_relative: {minutes_ago: 30}}}
+        Trade: {Currency: {MintAddress: {notIn: ["So11111111111111111111111111111111111111112","11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB","cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij","3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh","7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"]}}}
+        Transaction: {Result: {Success: true}}
       }
-      
-      # Current 1-hour metrics
-      current_1h_volume: sum(of: Trade_Side_AmountInUSD)
-      current_1h_trades: count
-      current_1h_traders: count(distinct: Transaction_Signer)
-      
-      # Buy/Sell breakdown
-      current_1h_buy_volume: sum(
-        of: Trade_Side_AmountInUSD
-        if: {Trade: {Side: {Type: {is: buy}}}}
-      )
-      current_1h_sell_volume: sum(
-        of: Trade_Side_AmountInUSD
-        if: {Trade: {Side: {Type: {is: sell}}}}
-      )
-      current_1h_buys: count(if: {Trade: {Side: {Type: {is: buy}}}})
-      current_1h_sells: count(if: {Trade: {Side: {Type: {is: sell}}}})
-      
-      # Unique buyers/sellers in last hour
-      current_1h_buyers: count(
-        distinct: Transaction_Signer
-        if: {Trade: {Side: {Type: {is: buy}}}}
-      )
-      current_1h_sellers: count(
-        distinct: Transaction_Signer
-        if: {Trade: {Side: {Type: {is: sell}}}}
-      )
-      
-      # Price change in last hour
-      price_change_1h: calculate(
-        expression: "(($Trade_current_price - $Trade_start_price) / $Trade_start_price) * 100"
-      )
-      
-      # Time range
-      Block {
-        first_trade: Time(minimum: Block_Time)
-        last_trade: Time(maximum: Block_Time)
+    ) {
+      Trade {Currency {Name Symbol MintAddress Uri}}
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
+    }
+
+    # ========== 1 HOUR ==========
+    trending_1hour: DEXTradeByTokens(
+      limit: {count: 20}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
+      where: {
+        Block: {Time: {since_relative: {hours_ago: 1}}}
+        Trade: {Currency: {MintAddress: {notIn: ["So11111111111111111111111111111111111111112","11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB","cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij","3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh","7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"]}}}
+        Transaction: {Result: {Success: true}}
       }
+    ) {
+      Trade {Currency {Name Symbol MintAddress Uri}}
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
     }
   }
-}`;
+}
+`;
+
+export const POPULAR_TOKENS_QUERY = `
+query PopularTokensByActivity {
+  Solana {
+    # ========== 24 HOURS ==========
+    popular_24h: DEXTradeByTokens(
+      limit: {count: 50}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
+      where: {
+        Block: {Time: {since_relative: {hours_ago: 24}}}
+        Trade: {
+          Currency: {
+            MintAddress: {
+              notIn: [
+                "So11111111111111111111111111111111111111112", # Wrapped SOL
+                "11111111111111111111111111111111",           # Native SOL
+                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", # USDC
+                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", # USDT
+                "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij", # Excluded token
+                "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh", # Excluded token
+                "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"  # ETH
+              ]
+            }
+          }
+        }
+        Transaction: {Result: {Success: true}}
+      }
+    ) {
+      Trade { Currency { Name Symbol MintAddress Uri} }
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
+    }
+
+    # ========== 7 DAYS ==========
+    popular_7d: DEXTradeByTokens(
+      limit: {count: 50}
+      orderBy: {descendingByField: "tradesCountWithUniqueTraders"}
+      where: {
+        Block: {Time: {since_relative: {days_ago: 7}}}
+        Trade: {
+          Currency: {
+            MintAddress: {
+              notIn: [
+                "So11111111111111111111111111111111111111112",
+                "11111111111111111111111111111111",
+                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+                "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+                "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+                "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"
+              ]
+            }
+          }
+        }
+        Transaction: {Result: {Success: true}}
+      }
+    ) {
+      Trade { Currency { Name Symbol MintAddress Uri} }
+      tradesCountWithUniqueTraders: count(distinct: Transaction_Signer)
+      traded_volume: sum(of: Trade_Side_AmountInUSD)
+      trades: count
+    }
+  }
+}
+`;
 
 export const BLUECHIP_MEMES_QUERY = `
 query BlueChipMemes {
@@ -1089,21 +1081,103 @@ query AITokensOnSolana {
 }
 `;
 
-const getMarketCapOfToken = `
-query MyQuery {
+export const TOKEN_DETAIL = `
+query TokenMarketCapAndPriceChange($mintAddress: String!) {
   Solana {
+    # --- Market Cap & Supply ---
     TokenSupplyUpdates(
-      where: {TokenSupplyUpdate: {Currency: {MintAddress: {is: "ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY"}}}}
+      where: {TokenSupplyUpdate: {Currency: {MintAddress: {is: $mintAddress}}}}
       limit: {count: 1}
       orderBy: {descending: Block_Time}
     ) {
       TokenSupplyUpdate {
+        PostBalance          # Total supply
+        PostBalanceInUSD     # Market cap
+        Currency {
+          Name
+          Symbol
+          MintAddress
+          Decimals
+        }
+      }
+    }
+
+    # --- Current Price (Latest) ---
+    LatestPrice: DEXTradeByTokens(
+      where: {
+        Transaction: { Result: { Success: true } }
+        Trade: {Currency: {MintAddress: {is: $mintAddress}}}
+      }
+      limit: {count: 1}
+      orderBy: {descendingByField: "Block_Time"}
+    ) {
+      Block {
+        Time
+      }
+      Trade {
+        Price
+        PriceInUSD
+      }
+    }
+
+    # --- 24h Price Change Data ---
+    PriceChange24h: DEXTradeByTokens(
+      where: {
+        Transaction: { Result: { Success: true } }
+        Trade: {
+          Currency: { MintAddress: { is: $mintAddress } }
+        }
+        Block: { Time: { since_relative: { hours_ago: 24 } } }
+      }
+    ) {
+      Trade {
+        CurrentPrice: PriceInUSD(maximum: Block_Time)    # Latest price in 24h window
+        Price24hAgo: PriceInUSD(minimum: Block_Time)     # Oldest price in 24h window
+      }
+      
+      PriceChange24h: calculate(
+        expression: "(($Trade_CurrentPrice - $Trade_Price24hAgo) / $Trade_Price24hAgo) * 100"
+      )
+      
+      # PriceChangeAbsolute: calculate(
+      #   expression: "$Trade_CurrentPrice - $Trade_Price24hAgo"
+      # )
+    }
+  }
+}`;
+
+export const GET_MARKETCAP_OF_TOKEN = `
+query TokenMarketCapAndPrice($mintAddress: String!) {
+  Solana {
+    # --- Supply ---
+    TokenSupplyUpdates(
+      where: {TokenSupplyUpdate: {Currency: {MintAddress: {is: $mintAddress}}}}
+      limit: {count: 1}
+      orderBy: {descending: Block_Time}
+    ) {
+      TokenSupplyUpdate {
+        PostBalance
         PostBalanceInUSD
-        # PostBalance
+      }
+    }
+
+    # --- Latest Price ---
+    DEXTradeByTokens(
+      where: {Trade: {Currency: {MintAddress: {is: $mintAddress}}}}
+      limit: {count: 1}
+      orderBy: {descendingByField: "Block_Time"}
+    ) {
+      Block {
+        Time
+      }
+      Trade {
+        Price
+        PriceInUSD
       }
     }
   }
 }
+
 `;
 
 const tokenHolders = `

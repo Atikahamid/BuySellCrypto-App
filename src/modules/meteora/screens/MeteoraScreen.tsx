@@ -64,7 +64,7 @@ export default function MeteoraScreen() {
             <StatusBar style="light" />
 
             <AppHeader
-                title="Meteora"
+                title="Launch a coin"
                 showBackButton={true}
                 onBackPress={handleBack}
             />

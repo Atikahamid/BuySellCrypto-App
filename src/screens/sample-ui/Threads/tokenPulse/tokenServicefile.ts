@@ -9,6 +9,8 @@ const LSTS_RELATIVE = "/api/tokenRelatedData/lsts-tokens"; // <--- new
 // ==== Add below existing imports/consts ====
 const BLUECHIP_RELATIVE = "/api/tokenRelatedData/bluechip-memes";
 const AI_RELATIVE = "/api/tokenRelatedData/ai-tokens";
+const TRENDING_RELATIVE = "/api/tokenRelatedData/trending-tokens";
+const POPULAR_RELATIVE = "/api/tokenRelatedData/popular-tokens";
 
 export const BLUECHIP_ENDPOINT = `${SERVER_URL}${BLUECHIP_RELATIVE}`;
 export const AI_ENDPOINT = `${SERVER_URL}${AI_RELATIVE}`;
@@ -17,6 +19,8 @@ export const MIGRATED_ENDPOINT = `${SERVER_URL}${MIGRATED_RELATIVE}`;
 export const NEWLY_CREATED_ENDPOINT = `${SERVER_URL}${NEWLY_CREATED_RELATIVE}`; // ✅ new
 export const XSTOCK_ENDPOINT = `${SERVER_URL}${XSTOCK_RELATIVE}`; // <-- new
 export const LSTS_ENDPOINT = `${SERVER_URL}${LSTS_RELATIVE}`; // <--- new
+export const TRENDING_ENDPOINT = `${SERVER_URL}${TRENDING_RELATIVE}`; // ✅
+export const POPULAR_ENDPOINT = `${SERVER_URL}${POPULAR_RELATIVE}`;   // ✅
 
 export type BackendAnalytics = {
   totalBuys?: string | number;
@@ -46,6 +50,16 @@ export type BackendToken = {
   feePayer?: string | null;
   fee?: string | null;
   feeInUSD?: string | null;
+};
+export type SearchToken = {
+  mint: string;
+  name: string | null;
+  symbol: string | null;
+  image: string | null;
+  marketcap: number | null;
+  volume: number | null;
+  liquidity: number | null;
+  priceChange24h: number | null;
 };
 
 async function fetchJson(url: string) {
@@ -77,15 +91,6 @@ export async function fetchMigratedTokens(): Promise<BackendToken[]> {
   }
 }
 
-export async function fetchXstockTokens(): Promise<BackendToken[]> {
-  try {
-    const data = await fetchJson(XSTOCK_ENDPOINT);
-    return Array.isArray(data) ? data : [];
-  } catch (err: any) {
-    console.error("[tokenService] fetchXstockTokens error:", err?.message ?? err);
-    return [];
-  }
-}
 // ✅ New function for newly created tokens
 export async function fetchNewlyCreatedTokens(): Promise<BackendToken[]> {
   try {
@@ -97,38 +102,66 @@ export async function fetchNewlyCreatedTokens(): Promise<BackendToken[]> {
   }
 }
 
-export async function fetchLSTsTokens(): Promise<BackendToken[]> {
-  try {
-    const data = await fetchJson(LSTS_ENDPOINT);
-    return Array.isArray(data) ? data : [];
-  } catch (err: any) {
-    console.error("[tokenService] fetchLSTsTokens error:", err?.message ?? err);
-    return [];
-  }
-}
-
-// Fetch BlueChip Meme tokens
-export async function fetchBlueChipMemes(): Promise<BackendToken[]> {
+// ---- Fetchers with new return type ----
+export async function fetchBlueChipMemes(): Promise<SearchToken[]> {
   try {
     const data = await fetchJson(BLUECHIP_ENDPOINT);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
   } catch (err: any) {
     console.error("[tokenService] fetchBlueChipMemes error:", err?.message ?? err);
     return [];
   }
 }
 
-// Fetch AI tokens
-export async function fetchAITokens(): Promise<BackendToken[]> {
+export async function fetchTrendingTokens(): Promise<SearchToken[]> {
+  try {
+    const data = await fetchJson(TRENDING_ENDPOINT);
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
+  } catch (err: any) {
+    console.error("[tokenService] fetchTrendingTokens error:", err?.message ?? err);
+    return [];
+  }
+}
+
+export async function fetchPopularTokens(): Promise<SearchToken[]> {
+  try {
+    const data = await fetchJson(POPULAR_ENDPOINT);
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
+  } catch (err: any) {
+    console.error("[tokenService] fetchPopularTokens error:", err?.message ?? err);
+    return [];
+  }
+}
+
+export async function fetchAITokens(): Promise<SearchToken[]> {
   try {
     const data = await fetchJson(AI_ENDPOINT);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
   } catch (err: any) {
     console.error("[tokenService] fetchAITokens error:", err?.message ?? err);
     return [];
   }
 }
 
+export async function fetchXstockTokens(): Promise<SearchToken[]> {
+  try {
+    const data = await fetchJson(XSTOCK_ENDPOINT);
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
+  } catch (err: any) {
+    console.error("[tokenService] fetchXstockTokens error:", err?.message ?? err);
+    return [];
+  }
+}
+
+export async function fetchLSTsTokens(): Promise<SearchToken[]> {
+  try {
+    const data = await fetchJson(LSTS_ENDPOINT);
+    return Array.isArray(data) ? (data as SearchToken[]) : [];
+  } catch (err: any) {
+    console.error("[tokenService] fetchLSTsTokens error:", err?.message ?? err);
+    return [];
+  }
+}
 /** getRelativeTime: accepts ISO string or unix seconds/ms number */
 export function getRelativeTime(blockTime: string | number | undefined): string {
   if (!blockTime) return "0s";

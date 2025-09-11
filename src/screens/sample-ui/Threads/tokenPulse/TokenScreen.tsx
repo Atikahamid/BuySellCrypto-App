@@ -16,10 +16,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   fetchAlmostBondedTokens,
   fetchMigratedTokens,
-  fetchNewlyCreatedTokens,   // ✅ import new
+  fetchNewlyCreatedTokens,
   BackendToken,
   getRelativeTime,
-} from "./tokenServicefile"; // ✅ fix import path if needed
+} from "./tokenServicefile";
 import { LinearGradient } from "expo-linear-gradient";
 
 export const TokensScreen: React.FC = () => {
@@ -47,7 +47,7 @@ export const TokensScreen: React.FC = () => {
           const t = await fetchMigratedTokens();
           if (mounted) setApiTokens(t);
         } else {
-          const t = await fetchNewlyCreatedTokens();   // ✅ call new API
+          const t = await fetchNewlyCreatedTokens();
           if (mounted) setApiTokens(t);
         }
       } catch (err) {
@@ -62,7 +62,6 @@ export const TokensScreen: React.FC = () => {
     };
   }, [activeTab]);
 
-  // map backend tokens into TokenCard props
   const mappedApiTokens = apiTokens.map((t) => ({
     mint: t.mint,
     logo: t.image ?? "https://dummyimage.com/42x42/666/fff.png&text=?",
@@ -104,9 +103,13 @@ export const TokensScreen: React.FC = () => {
       colors={COLORS.backgroundGradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.container}>
+      style={styles.container}
+    >
       <SafeAreaView
-        style={[styles.container, Platform.OS === "android" && styles.androidSafeArea]}
+        style={[
+          styles.container,
+          Platform.OS === "android" && styles.androidSafeArea,
+        ]}
       >
         <AppHeader title="App" showBackButton={true} onBackPress={handleBack} />
 
@@ -122,13 +125,28 @@ export const TokensScreen: React.FC = () => {
           data={mappedApiTokens}
           keyExtractor={(item, idx) => item.mint ?? `${activeTab}-${idx}`}
           renderItem={({ item }) => <TokenCard {...item} />}
-          contentContainerStyle={{ padding: 12 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 80 }} // leave space for button
           ListEmptyComponent={
-            <Text style={{ color: COLORS.greyMid, textAlign: "center", marginTop: 20 }}>
+            <Text
+              style={{
+                color: COLORS.greyMid,
+                textAlign: "center",
+                marginTop: 20,
+              }}
+            >
               {loading ? "Loading..." : "No tokens found."}
             </Text>
           }
         />
+
+        {/* Fixed Button */}
+        <TouchableOpacity
+          style={styles.launchButton}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate("MeteoraScreen" as never)} // <-- replace with your screen name
+        >
+          <Text style={styles.launchButtonText}>Launch a Coin</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -159,6 +177,27 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: COLORS.white,
+    fontWeight: "600",
+  },
+  launchButton: {
+    position: "absolute",
+    bottom: 80,
+    left: 70,
+    right: 70,
+    backgroundColor: "#82a7d7ff",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  launchButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
     fontWeight: "600",
   },
 });

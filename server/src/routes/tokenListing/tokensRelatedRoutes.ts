@@ -1,8 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { decodeMetadata, getTokenAnalytics } from '../../utils/tokenRelatedUtils';
-import { AI_TOKENS_QUERY, ALMOST_BONDED_QUERY, blacklist, BLUECHIP_MEMES_QUERY, GET_MIGRATED_TOKENS_QUERY, metadataQuery, NEWLY_CREATED_TOKENS_QUERY, VERIFIED_LSTS_QUERY, xSTOCK_TOKENS_QUERY } from '../../queries/allQueryFile';
-
+import { AI_TOKENS_QUERY, ALMOST_BONDED_QUERY, blacklist, BLUECHIP_MEMES_QUERY, GET_MIGRATED_TOKENS_QUERY, metadataQuery, NEWLY_CREATED_TOKENS_QUERY, POPULAR_TOKENS_QUERY, TOKEN_DETAIL, TRENDING_TOKENS_QUERY, VERIFIED_LSTS_QUERY, xSTOCK_TOKENS_QUERY } from '../../queries/allQueryFile';
+import { redisClient } from "../../redis/redisClient";
+import { fetchBluechipMemesNow } from '../../workers/blueChipWorker';
+import knex from "../../db/knex";
 const tokenRelatedRouter = Router();
 
 // async function decodeMetadata(uri: string | undefined) {
@@ -314,6 +316,60 @@ tokenRelatedRouter.get("/newly-created-tokens", async (req: Request, res: Respon
   }
 });
 
+
+// -------------------------------------
+// Helper: Fetch market cap, volume, price change, liquidity
+// -------------------------------------
+async function fetchTokenDetail(mint: string) {
+  try {
+    const marketRes = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      { query: TOKEN_DETAIL, variables: { mintAddress: mint } },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+        },
+      }
+    );
+
+    const solanaData = marketRes.data?.data?.Solana;
+    if (!solanaData) return {};
+
+    let marketcap: number | null = null;
+    let priceChange24h: number | null = null;
+    let volume: number | null = null;
+    let liquidity: number | null = null;
+
+    const supplyUpdate = solanaData?.TokenSupplyUpdates?.[0]?.TokenSupplyUpdate;
+    const latestPrice = solanaData?.DEXTradeByTokens?.[0]?.Trade?.PriceInUSD;
+
+    if (supplyUpdate) {
+      if (supplyUpdate.PostBalanceInUSD && supplyUpdate.PostBalanceInUSD > 0) {
+        marketcap = supplyUpdate.PostBalanceInUSD;
+      } else if (latestPrice) {
+        marketcap = (supplyUpdate.PostBalance || 0) * latestPrice;
+      }
+    }
+
+    const priceChangeEntry = solanaData?.PriceChange24h?.[0];
+    if (priceChangeEntry && priceChangeEntry.PriceChange24h !== undefined) {
+      priceChange24h = Number(priceChangeEntry.PriceChange24h);
+    }
+
+    volume = solanaData?.Volume24h?.[0]?.volume ?? null;
+    liquidity = solanaData?.Liquidity?.[0]?.liquidity ?? null;
+
+    return { marketcap, priceChange24h, volume, liquidity };
+  } catch (err: any) {
+    console.error(`❌ Error fetching TOKEN_DETAIL for ${mint}:`, err.message);
+    return {};
+  }
+}
+
+// -------------------------------------
+// Route: XStock Tokens
+// -------------------------------------
 tokenRelatedRouter.get("/xstock-tokens", async (req: Request, res: Response) => {
   try {
     const response = await axios.post(
@@ -328,38 +384,18 @@ tokenRelatedRouter.get("/xstock-tokens", async (req: Request, res: Response) => 
     );
 
     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+    if (!trades.length) return res.json({ count: 0, tokens: [] });
 
-    if (!trades.length) {
-      return res.json({ count: 0, tokens: [] });
-    }
-
-    // Deduplicate by MintAddress (Bitquery may repeat entries for same token on multiple markets)
     const seen = new Map<string, any>();
-
     for (const entry of trades) {
       const currency = entry.Trade?.Currency ?? {};
       const mint = currency.MintAddress;
-      if (!mint) continue;
+      if (!mint || seen.has(mint)) continue;
 
-      // If already seen, skip (or aggregate further if needed)
-      if (seen.has(mint)) continue;
-
-      // Decode metadata for image & socials
       let imageUrl: string | null = null;
-      // let createdOn: string | null = null;
-      // let twitterX: string | null = null;
-      // let telegramX: string | null = null;
-      // let website: string | null = null;
-
       if (currency.Uri) {
         const meta = await decodeMetadata(currency.Uri);
-        if (meta) {
-          imageUrl = meta.image || null;
-          // createdOn = meta.createdOn || null;
-          // telegramX = meta.telegram || null;
-          // twitterX = meta.twitter || null;
-          // website = meta.website || null;
-        }
+        if (meta) imageUrl = meta.image || null;
       }
 
       seen.set(mint, {
@@ -368,35 +404,29 @@ tokenRelatedRouter.get("/xstock-tokens", async (req: Request, res: Response) => 
         symbol: currency.Symbol ?? null,
         uri: currency.Uri ?? null,
         image: imageUrl,
-        // createdOn,
-        // twitterX,
-        // telegramX,
-        // website,
-        latestPrice: entry.Trade?.latest_price ?? null,
-        totalVolume: entry.total_volume ?? "0",
-        totalTrades: entry.total_trades ?? "0",
-        uniqueTraders: entry.unique_traders ?? "0",
-        uniqueDexs: entry.unique_dexs ?? "0",
-        // TODO: MarketCap & Liquidity → you’ll need extra query (DEXPools) or analytics helper
-        marketCap: null,
-        liquidity: null,
+        // latestPrice: entry.Trade?.latest_price ?? null,
+        // totalVolume: entry.total_volume ?? "0",
+        // totalTrades: entry.total_trades ?? "0",
+        // uniqueTraders: entry.unique_traders ?? "0",
+        // uniqueDexs: entry.unique_dexs ?? "0",
       });
     }
 
-    const tokens = Array.from(seen.values());
+    const tokensArr = Array.from(seen.values());
+    const enriched = await Promise.all(
+      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
 
-    res.json({
-      count: tokens.length,
-      tokens,
-    });
+    res.json({ count: enriched.length, tokens: enriched });
   } catch (err: any) {
     console.error("❌ Error fetching xStock tokens:", err.message);
     res.status(500).json({ error: "Failed to fetch xStock tokens" });
   }
 });
 
-
-// ✅ New route for fetching LSTs tokens
+// -------------------------------------
+// Route: LSTs Tokens
+// -------------------------------------
 tokenRelatedRouter.get("/lsts-tokens", async (req: Request, res: Response) => {
   try {
     const response = await axios.post(
@@ -411,29 +441,18 @@ tokenRelatedRouter.get("/lsts-tokens", async (req: Request, res: Response) => {
     );
 
     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+    if (!trades.length) return res.json({ count: 0, tokens: [] });
 
-    if (!trades.length) {
-      return res.json({ count: 0, tokens: [] });
-    }
-
-    // Deduplicate by MintAddress
     const seen = new Map<string, any>();
-
     for (const entry of trades) {
       const currency = entry.Trade?.Currency ?? {};
       const mint = currency.MintAddress;
-      if (!mint) continue;
+      if (!mint || seen.has(mint)) continue;
 
-      // If already seen, skip (to avoid duplicates across markets)
-      if (seen.has(mint)) continue;
-
-      // Decode metadata for image
       let imageUrl: string | null = null;
       if (currency.Uri) {
         const meta = await decodeMetadata(currency.Uri);
-        if (meta) {
-          imageUrl = meta.image || null;
-        }
+        if (meta) imageUrl = meta.image || null;
       }
 
       seen.set(mint, {
@@ -442,30 +461,30 @@ tokenRelatedRouter.get("/lsts-tokens", async (req: Request, res: Response) => {
         symbol: currency.Symbol ?? null,
         uri: currency.Uri ?? null,
         image: imageUrl,
-        latestPriceUSD: entry.Trade?.latest_price_usd ?? null,
-        latestPriceSOL: entry.Trade?.latest_price_sol ?? null,
-        volume7dUSD: entry.volume_7d_usd ?? "0",
-        trades7d: entry.trades_7d ?? "0",
-        uniqueTraders7d: entry.unique_traders_7d ?? "0",
-        protocolName: entry.Trade?.Dex?.ProtocolName ?? null,
+        // latestPriceUSD: entry.Trade?.latest_price_usd ?? null,
+        // latestPriceSOL: entry.Trade?.latest_price_sol ?? null,
+        // volume7dUSD: entry.volume_7d_usd ?? "0",
+        // trades7d: entry.trades_7d ?? "0",
+        // uniqueTraders7d: entry.unique_traders_7d ?? "0",
+        // protocolName: entry.Trade?.Dex?.ProtocolName ?? null,
       });
     }
 
-    const tokens = Array.from(seen.values());
+    const tokensArr = Array.from(seen.values());
+    const enriched = await Promise.all(
+      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
 
-    res.json({
-      count: tokens.length,
-      tokens,
-    });
+    res.json({ count: enriched.length, tokens: enriched });
   } catch (err: any) {
     console.error("❌ Error fetching LSTs tokens:", err.message);
     res.status(500).json({ error: "Failed to fetch LSTs tokens" });
   }
 });
 
-
-// ✅ New route for fetching BlueChip Meme tokens
-
+// -------------------------------------
+// Route: Bluechip Memes Tokens
+// -------------------------------------
 tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) => {
   try {
     const response = await axios.post(
@@ -480,32 +499,21 @@ tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) =>
     );
 
     const updates = response.data?.data?.Solana?.TokenSupplyUpdates ?? [];
-
-    if (!updates.length) {
-      return res.json({ count: 0, tokens: [] });
-    }
+    if (!updates.length) return res.json({ count: 0, tokens: [] });
 
     const seen = new Map<string, any>();
-
     for (const entry of updates) {
       const update = entry.TokenSupplyUpdate ?? {};
       const currency = update.Currency ?? {};
       const mint = currency.MintAddress;
-      if (!mint) continue;
+      if (!mint || seen.has(mint)) continue;
 
-      // blacklist filter
-      if (blacklist.includes(currency.Symbol) || blacklist.includes(currency.Name)) {
-        continue;
-      }
-
-      if (seen.has(mint)) continue;
+      if (blacklist.includes(currency.Symbol) || blacklist.includes(currency.Name)) continue;
 
       let imageUrl: string | null = null;
       if (currency.Uri) {
         const meta = await decodeMetadata(currency.Uri);
-        if (meta) {
-          imageUrl = meta.image || null;
-        }
+        if (meta) imageUrl = meta.image || null;
       }
 
       seen.set(mint, {
@@ -514,34 +522,29 @@ tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) =>
         symbol: currency.Symbol ?? null,
         uri: currency.Uri ?? null,
         image: imageUrl,
-        latestPriceUSD: null, // Not provided in this query
-        latestPriceSOL: null, // Not provided in this query
-        volume7dUSD: null,
-        trades7d: null,
-        uniqueTraders7d: null,
-        protocolName: null,
-        marketcap: update.Marketcap ?? null,
       });
     }
 
-    const tokens = Array.from(seen.values());
+    const tokensArr = Array.from(seen.values());
+    const enriched = await Promise.all(
+      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
 
-    res.json({
-      count: tokens.length,
-      tokens,
-    });
+    res.json({ count: enriched.length, tokens: enriched });
   } catch (err: any) {
     console.error("❌ Error fetching BlueChip Meme tokens:", err.message);
     res.status(500).json({ error: "Failed to fetch BlueChip Meme tokens" });
   }
 });
 
-// ✅ New route for fetching AI tokens
+// -------------------------------------
+// Route: AI Tokens
+// -------------------------------------
 tokenRelatedRouter.get("/ai-tokens", async (req: Request, res: Response) => {
   try {
     const response = await axios.post(
       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: AI_TOKENS_QUERY }, // <-- define your GraphQL query string here
+      { query: AI_TOKENS_QUERY },
       {
         headers: {
           "Content-Type": "application/json",
@@ -551,38 +554,18 @@ tokenRelatedRouter.get("/ai-tokens", async (req: Request, res: Response) => {
     );
 
     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+    if (!trades.length) return res.json({ count: 0, tokens: [] });
 
-    if (!trades.length) {
-      return res.json({ count: 0, tokens: [] });
-    }
-
-    // Deduplicate by MintAddress
     const seen = new Map<string, any>();
-
     for (const entry of trades) {
       const currency = entry.Trade?.Currency ?? {};
       const mint = currency.MintAddress;
-      if (!mint) continue;
+      if (!mint || seen.has(mint)) continue;
 
-      // Skip duplicates
-      if (seen.has(mint)) continue;
-
-      // Decode metadata for image & socials
       let imageUrl: string | null = null;
-      // let createdOn: string | null = null;
-      // let twitterX: string | null = null;
-      // let telegramX: string | null = null;
-      // let website: string | null = null;
-
       if (currency.Uri) {
         const meta = await decodeMetadata(currency.Uri);
-        if (meta) {
-          imageUrl = meta.image || null;
-          // createdOn = meta.createdOn || null;
-          // twitterX = meta.twitter || null;
-          // telegramX = meta.telegram || null;
-          // website = meta.website || null;
-        }
+        if (meta) imageUrl = meta.image || null;
       }
 
       seen.set(mint, {
@@ -591,31 +574,742 @@ tokenRelatedRouter.get("/ai-tokens", async (req: Request, res: Response) => {
         symbol: currency.Symbol ?? null,
         uri: currency.Uri ?? null,
         image: imageUrl,
-        // createdOn,
-        // twitterX,
-        // telegramX,
-        // website,
-        latestPrice: entry.Trade?.latest_price ?? null,
-        // totalVolume: entry.volume_7d ?? "0", // using 7d volume from query
-        // totalTrades: entry.total_trades_7d ?? "0", // using 7d trades from query
-        // uniqueTraders: entry.unique_traders_7d ?? "0", // using 7d unique traders from query
-        // uniqueDexs: entry.unique_dexs ?? "0",
-        marketCap: null, // can extend later with pool/liquidity data
-        liquidity: null,
+        // latestPrice: entry.Trade?.latest_price ?? null,
       });
     }
 
-    const tokens = Array.from(seen.values());
+    const tokensArr = Array.from(seen.values());
+    const enriched = await Promise.all(
+      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
 
-    res.json({
-      count: tokens.length,
-      tokens,
-    });
+    res.json({ count: enriched.length, tokens: enriched });
   } catch (err: any) {
     console.error("❌ Error fetching AI tokens:", err.message);
     res.status(500).json({ error: "Failed to fetch AI tokens" });
   }
 });
+
+// -------------------------------------
+// Route: Trending Tokens
+// -------------------------------------
+tokenRelatedRouter.get("/trending-tokens", async (req: Request, res: Response) => {
+  try {
+    const response = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      { query: TRENDING_TOKENS_QUERY },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+        },
+      }
+    );
+
+    const solana = response.data?.data?.Solana;
+    if (!solana) return res.json({ count: 0, tokens: [] });
+
+    const frames = [solana.trending_1min || [], solana.trending_5min || [], solana.trending_30min || [], solana.trending_1hour || []];
+    const tokenMap = new Map<string, any[]>();
+
+    frames.forEach((frame, idx) => {
+      frame.forEach((entry: any) => {
+        const currency = entry.Trade?.Currency;
+        if (!currency?.MintAddress) return;
+
+        if (!tokenMap.has(currency.MintAddress)) {
+          tokenMap.set(currency.MintAddress, []);
+        }
+
+        tokenMap.get(currency.MintAddress)?.push({
+          frameIndex: idx,
+          uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
+          volume: Number(entry.traded_volume || 0),
+          trades: Number(entry.trades || 0),
+          currency,
+        });
+      });
+    });
+
+    const trending: any[] = [];
+    const seenMints = new Set<string>();
+
+    for (const [mint, metrics] of tokenMap) {
+      metrics.sort((a, b) => a.frameIndex - b.frameIndex);
+
+      let isTrending = false;
+      for (let i = 1; i < metrics.length; i++) {
+        const prev = metrics[i - 1];
+        const curr = metrics[i];
+        if (curr.uniqueTraders > prev.uniqueTraders || curr.volume > prev.volume || curr.trades > prev.trades) {
+          isTrending = true;
+          break;
+        }
+      }
+
+      if (isTrending && !seenMints.has(mint)) {
+        seenMints.add(mint);
+        const currency = metrics[0].currency;
+
+        let imageUrl: string | null = null;
+        if (currency.Uri) {
+          const meta = await decodeMetadata(currency.Uri);
+          if (meta) imageUrl = meta.image || null;
+        }
+
+        trending.push({
+          mint,
+          name: currency.Name ?? null,
+          symbol: currency.Symbol ?? null,
+          uri: currency.Uri ?? null,
+          image: imageUrl,
+        });
+      }
+    }
+
+    const enriched = await Promise.all(
+      trending.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
+
+    res.json({ count: enriched.length, tokens: enriched });
+  } catch (err: any) {
+    console.error("❌ Error fetching trending tokens:", err.message);
+    res.status(500).json({ error: "Failed to fetch trending tokens" });
+  }
+});
+
+// -------------------------------------
+// Route: Popular Tokens
+// -------------------------------------
+tokenRelatedRouter.get("/popular-tokens", async (req: Request, res: Response) => {
+  try {
+    const response = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      { query: POPULAR_TOKENS_QUERY },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+        },
+      }
+    );
+
+    const solana = response.data?.data?.Solana;
+    if (!solana) return res.json({ count: 0, tokens: [] });
+
+    const frames = [solana.popular_24h || [], solana.popular_7d || []];
+    const tokenMap = new Map<string, any[]>();
+
+    frames.forEach((frame, idx) => {
+      frame.forEach((entry: any) => {
+        const currency = entry.Trade?.Currency;
+        if (!currency?.MintAddress) return;
+
+        if (!tokenMap.has(currency.MintAddress)) {
+          tokenMap.set(currency.MintAddress, []);
+        }
+
+        tokenMap.get(currency.MintAddress)?.push({
+          frameIndex: idx,
+          uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
+          volume: Number(entry.traded_volume || 0),
+          trades: Number(entry.trades || 0),
+          currency,
+        });
+      });
+    });
+
+    const popular: any[] = [];
+    const seenMints = new Set<string>();
+
+    for (const [mint, metrics] of tokenMap) {
+      metrics.sort((a, b) => a.frameIndex - b.frameIndex);
+
+      if (!seenMints.has(mint)) {
+        seenMints.add(mint);
+        const currency = metrics[0].currency;
+
+        let imageUrl: string | null = null;
+        if (currency.Uri) {
+          const meta = await decodeMetadata(currency.Uri);
+          if (meta) imageUrl = meta.image || null;
+        }
+
+        popular.push({
+          mint,
+          name: currency.Name ?? null,
+          symbol: currency.Symbol ?? null,
+          uri: currency.Uri ?? null,
+          image: imageUrl,
+        });
+      }
+    }
+
+    const enriched = await Promise.all(
+      popular.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
+    );
+
+    res.json({ count: enriched.length, tokens: enriched });
+  } catch (err: any) {
+    console.error("❌ Error fetching popular tokens:", err.message);
+    res.status(500).json({ error: "Failed to fetch popular tokens" });
+  }
+});
+
+
+// ---------------------------------------------------------------------------------------------------------
+
+// tokenRelatedRouter.get("/xstock-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: xSTOCK_TOKENS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+//     if (!trades.length) {
+//       return res.json({ count: 0, tokens: [] });
+//     }
+
+//     // Deduplicate by MintAddress (Bitquery may repeat entries for same token on multiple markets)
+//     const seen = new Map<string, any>();
+
+//     for (const entry of trades) {
+//       const currency = entry.Trade?.Currency ?? {};
+//       const mint = currency.MintAddress;
+//       if (!mint) continue;
+
+//       // If already seen, skip (or aggregate further if needed)
+//       if (seen.has(mint)) continue;
+
+//       // Decode metadata for image & socials
+//       let imageUrl: string | null = null;
+//       // let createdOn: string | null = null;
+//       // let twitterX: string | null = null;
+//       // let telegramX: string | null = null;
+//       // let website: string | null = null;
+
+//       if (currency.Uri) {
+//         const meta = await decodeMetadata(currency.Uri);
+//         if (meta) {
+//           imageUrl = meta.image || null;
+//           // createdOn = meta.createdOn || null;
+//           // telegramX = meta.telegram || null;
+//           // twitterX = meta.twitter || null;
+//           // website = meta.website || null;
+//         }
+//       }
+
+//       seen.set(mint, {
+//         mint,
+//         name: currency.Name ?? null,
+//         symbol: currency.Symbol ?? null,
+//         uri: currency.Uri ?? null,
+//         image: imageUrl,
+//         // createdOn,
+//         // twitterX,
+//         // telegramX,
+//         // website,
+//         latestPrice: entry.Trade?.latest_price ?? null,
+//         totalVolume: entry.total_volume ?? "0",
+//         totalTrades: entry.total_trades ?? "0",
+//         uniqueTraders: entry.unique_traders ?? "0",
+//         uniqueDexs: entry.unique_dexs ?? "0",
+//         // TODO: MarketCap & Liquidity → you’ll need extra query (DEXPools) or analytics helper
+//         marketCap: null,
+//         liquidity: null,
+//       });
+//     }
+
+//     const tokens = Array.from(seen.values());
+
+//     res.json({
+//       count: tokens.length,
+//       tokens,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching xStock tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch xStock tokens" });
+//   }
+// });
+
+
+// // ✅ New route for fetching LSTs tokens
+// tokenRelatedRouter.get("/lsts-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: VERIFIED_LSTS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+//     if (!trades.length) {
+//       return res.json({ count: 0, tokens: [] });
+//     }
+
+//     // Deduplicate by MintAddress
+//     const seen = new Map<string, any>();
+
+//     for (const entry of trades) {
+//       const currency = entry.Trade?.Currency ?? {};
+//       const mint = currency.MintAddress;
+//       if (!mint) continue;
+
+//       // If already seen, skip (to avoid duplicates across markets)
+//       if (seen.has(mint)) continue;
+
+//       // Decode metadata for image
+//       let imageUrl: string | null = null;
+//       if (currency.Uri) {
+//         const meta = await decodeMetadata(currency.Uri);
+//         if (meta) {
+//           imageUrl = meta.image || null;
+//         }
+//       }
+
+//       seen.set(mint, {
+//         mint,
+//         name: currency.Name ?? null,
+//         symbol: currency.Symbol ?? null,
+//         uri: currency.Uri ?? null,
+//         image: imageUrl,
+//         latestPriceUSD: entry.Trade?.latest_price_usd ?? null,
+//         latestPriceSOL: entry.Trade?.latest_price_sol ?? null,
+//         volume7dUSD: entry.volume_7d_usd ?? "0",
+//         trades7d: entry.trades_7d ?? "0",
+//         uniqueTraders7d: entry.unique_traders_7d ?? "0",
+//         protocolName: entry.Trade?.Dex?.ProtocolName ?? null,
+//       });
+//     }
+
+//     const tokens = Array.from(seen.values());
+
+//     res.json({
+//       count: tokens.length,
+//       tokens,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching LSTs tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch LSTs tokens" });
+//   }
+// });
+
+
+// // ✅ New route for fetching BlueChip Meme tokens
+
+
+
+// tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) => {
+//   try {
+//     // step 1: fetch bluechip tokens
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: BLUECHIP_MEMES_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const updates = response.data?.data?.Solana?.TokenSupplyUpdates ?? [];
+//     if (!updates.length) return res.json({ count: 0, tokens: [] });
+
+//     const seen = new Map<string, any>();
+
+//     for (const entry of updates) {
+//       const update = entry.TokenSupplyUpdate ?? {};
+//       const currency = update.Currency ?? {};
+//       const mint = currency.MintAddress;
+//       if (!mint) continue;
+
+//       // blacklist
+//       if (blacklist.includes(currency.Symbol) || blacklist.includes(currency.Name)) continue;
+//       if (seen.has(mint)) continue;
+
+//       let imageUrl: string | null = null;
+//       if (currency.Uri) {
+//         const meta = await decodeMetadata(currency.Uri);
+//         if (meta) imageUrl = meta.image || null;
+//       }
+
+//       // step 2: fetch market cap + price change for this token
+//       const marketRes = await axios.post(
+//         process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//         { query: TOKEN_DETAIL, variables: { mintAddress: mint } },
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//           },
+//         }
+//       );
+
+//       const solanaData = marketRes.data?.data?.Solana;
+//       let marketcap: number | null = null;
+//       let priceChange24h: number | null = null;
+//       let volume: number | null = null;
+//       let liquidity: number | null = null;
+
+//       const supplyUpdate = solanaData?.TokenSupplyUpdates?.[0]?.TokenSupplyUpdate;
+//       const latestPrice = solanaData?.DEXTradeByTokens?.[0]?.Trade?.PriceInUSD;
+
+//       if (supplyUpdate) {
+//         if (supplyUpdate.PostBalanceInUSD && supplyUpdate.PostBalanceInUSD > 0) {
+//           marketcap = supplyUpdate.PostBalanceInUSD;
+//         } else if (latestPrice) {
+//           marketcap = (supplyUpdate.PostBalance || 0) * latestPrice;
+//         }
+//       }
+
+//       const priceChangeEntry = solanaData?.PriceChange24h?.[0];
+//       if (priceChangeEntry && priceChangeEntry.PriceChange24h !== undefined) {
+//         priceChange24h = Number(priceChangeEntry.PriceChange24h);
+//       }
+
+//       seen.set(mint, {
+//         mint,
+//         name: currency.Name ?? null,
+//         symbol: currency.Symbol ?? null,
+//         uri: currency.Uri ?? null,
+//         volume,
+//         liquidity,
+//         image: imageUrl,
+//         marketcap,
+//         priceChange24h,
+//       });
+//     }
+
+//     const tokens = Array.from(seen.values());
+//     res.json({ count: tokens.length, tokens });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching BlueChip Meme tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch BlueChip Meme tokens" });
+//   }
+// });
+
+// // ✅ New route for fetching AI tokens
+// tokenRelatedRouter.get("/ai-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: AI_TOKENS_QUERY }, // <-- define your GraphQL query string here
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+//     if (!trades.length) {
+//       return res.json({ count: 0, tokens: [] });
+//     }
+
+//     // Deduplicate by MintAddress
+//     const seen = new Map<string, any>();
+
+//     for (const entry of trades) {
+//       const currency = entry.Trade?.Currency ?? {};
+//       const mint = currency.MintAddress;
+//       if (!mint) continue;
+
+//       // Skip duplicates
+//       if (seen.has(mint)) continue;
+
+//       // Decode metadata for image & socials
+//       let imageUrl: string | null = null;
+//       // let createdOn: string | null = null;
+//       // let twitterX: string | null = null;
+//       // let telegramX: string | null = null;
+//       // let website: string | null = null;
+
+//       if (currency.Uri) {
+//         const meta = await decodeMetadata(currency.Uri);
+//         if (meta) {
+//           imageUrl = meta.image || null;
+//           // createdOn = meta.createdOn || null;
+//           // twitterX = meta.twitter || null;
+//           // telegramX = meta.telegram || null;
+//           // website = meta.website || null;
+//         }
+//       }
+
+//       seen.set(mint, {
+//         mint,
+//         name: currency.Name ?? null,
+//         symbol: currency.Symbol ?? null,
+//         uri: currency.Uri ?? null,
+//         image: imageUrl,
+//         // createdOn,
+//         // twitterX,
+//         // telegramX,
+//         // website,
+//         latestPrice: entry.Trade?.latest_price ?? null,
+//         // totalVolume: entry.volume_7d ?? "0", // using 7d volume from query
+//         // totalTrades: entry.total_trades_7d ?? "0", // using 7d trades from query
+//         // uniqueTraders: entry.unique_traders_7d ?? "0", // using 7d unique traders from query
+//         // uniqueDexs: entry.unique_dexs ?? "0",
+//         marketCap: null, // can extend later with pool/liquidity data
+//         liquidity: null,
+//       });
+//     }
+
+//     const tokens = Array.from(seen.values());
+
+//     res.json({
+//       count: tokens.length,
+//       tokens,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching AI tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch AI tokens" });
+//   }
+// });
+
+// // ✅ New route for fetching trending tokens
+// tokenRelatedRouter.get("/trending-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: TRENDING_TOKENS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const solana = response.data?.data?.Solana;
+//     if (!solana) return res.json({ count: 0, tokens: [] });
+
+//     const frames = [
+//       solana.trending_1min || [],
+//       solana.trending_5min || [],
+//       solana.trending_30min || [],
+//       solana.trending_1hour || [],
+//     ];
+
+//     const tokenMap = new Map<string, any[]>();
+
+//     // Collect metrics per token per frame
+//     frames.forEach((frame, idx) => {
+//       frame.forEach((entry: any) => {
+//         const currency = entry.Trade?.Currency;
+//         if (!currency?.MintAddress) return;
+
+//         if (!tokenMap.has(currency.MintAddress)) {
+//           tokenMap.set(currency.MintAddress, []);
+//         }
+
+//         tokenMap.get(currency.MintAddress)?.push({
+//           frameIndex: idx,
+//           uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
+//           volume: Number(entry.traded_volume || 0),
+//           trades: Number(entry.trades || 0),
+//           currency,
+//         });
+//       });
+//     });
+
+//     const trending: any[] = [];
+//     const seenMints = new Set<string>();
+
+//     for (const [mint, metrics] of tokenMap) {
+//       // Sort by frame index to compare in order
+//       metrics.sort((a, b) => a.frameIndex - b.frameIndex);
+
+//       let isTrending = false;
+//       for (let i = 1; i < metrics.length; i++) {
+//         const prev = metrics[i - 1];
+//         const curr = metrics[i];
+//         if (
+//           curr.uniqueTraders > prev.uniqueTraders ||
+//           curr.volume > prev.volume ||
+//           curr.trades > prev.trades
+//         ) {
+//           isTrending = true;
+//           break;
+//         }
+//       }
+
+//       if (isTrending && !seenMints.has(mint)) {
+//         seenMints.add(mint);
+//         const currency = metrics[0].currency;
+
+//         // Decode metadata if available
+//         let imageUrl: string | null = null;
+//         if (currency.Uri) {
+//           const meta = await decodeMetadata(currency.Uri);
+//           if (meta) imageUrl = meta.image || null;
+//         }
+
+//         trending.push({
+//           mint,
+//           name: currency.Name ?? null,
+//           symbol: currency.Symbol ?? null,
+//           uri: currency.Uri ?? null,
+//           image: imageUrl,
+//           latestPrice: null,
+//           marketCap: null,
+//           liquidity: null,
+//         });
+//       }
+//     }
+
+//     res.json({
+//       count: trending.length,
+//       tokens: trending,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching trending tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch trending tokens" });
+//   }
+// });
+
+// tokenRelatedRouter.get("/popular-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: POPULAR_TOKENS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
+
+//     const solana = response.data?.data?.Solana;
+//     if (!solana) return res.json({ count: 0, tokens: [] });
+
+//     const frames = [
+//       solana.popular_24h || [],
+//       solana.popular_7d || [],
+//     ];
+
+//     const tokenMap = new Map<string, any[]>();
+
+//     // Collect metrics per token per frame
+//     frames.forEach((frame, idx) => {
+//       frame.forEach((entry: any) => {
+//         const currency = entry.Trade?.Currency;
+//         if (!currency?.MintAddress) return;
+
+//         if (!tokenMap.has(currency.MintAddress)) {
+//           tokenMap.set(currency.MintAddress, []);
+//         }
+
+//         tokenMap.get(currency.MintAddress)?.push({
+//           frameIndex: idx,
+//           uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
+//           volume: Number(entry.traded_volume || 0),
+//           trades: Number(entry.trades || 0),
+//           currency,
+//         });
+//       });
+//     });
+
+//     const popular: any[] = [];
+//     const seenMints = new Set<string>();
+
+//     for (const [mint, metrics] of tokenMap) {
+//       metrics.sort((a, b) => a.frameIndex - b.frameIndex);
+
+//       if (!seenMints.has(mint)) {
+//         seenMints.add(mint);
+//         const currency = metrics[0].currency;
+
+//         // Decode metadata if available
+//         let imageUrl: string | null = null;
+//         if (currency.Uri) {
+//           const meta = await decodeMetadata(currency.Uri);
+//           if (meta) imageUrl = meta.image || null;
+//         }
+
+//         popular.push({
+//           mint,
+//           name: currency.Name ?? null,
+//           symbol: currency.Symbol ?? null,
+//           uri: currency.Uri ?? null,
+//           image: imageUrl,
+//           latestPrice: null,
+//           marketCap: null,
+//           liquidity: null,
+//         });
+//       }
+//     }
+
+//     res.json({
+//       count: popular.length,
+//       tokens: popular,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching popular tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch popular tokens" });
+//   }
+// });
+
+// tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) => {
+//   try {
+//     // 1) Try Redis
+//     try {
+//       const cached = await redisClient.get("bluechip-memes");
+//       if (cached) {
+//         const tokens = JSON.parse(cached);
+//         return res.json({ source: "cache", count: tokens.length, tokens });
+//       }
+//     } catch (rErr) {
+//       console.warn("⚠️ Redis get failed:", rErr?.message ?? rErr);
+//     }
+
+//     // 2) Try Postgres
+//     const rows = await knex("bluechip_memes").select(
+//       "mint",
+//       "name",
+//       "symbol",
+//       "uri",
+//       "image",
+//       "marketcap",
+//       "price_change_24h",
+//       "updated_at"
+//     ).orderBy("marketcap", "desc").limit(200);
+
+//     if (rows.length > 0) {
+//       // set redis (best-effort)
+//       try {
+//         await redisClient.set("bluechip-memes", JSON.stringify(rows), { EX: Number(process.env.BLUECHIP_CACHE_TTL ?? 60) });
+//       } catch (rErr) { console.warn("⚠️ Redis set failed:", rErr?.message ?? rErr); }
+//       return res.json({ source: "db", count: rows.length, tokens: rows });
+//     }
+
+//     // 3) No cache + no db -> trigger background refresh (non-blocking) and return empty quickly
+//     // do not await to keep request fast
+//     fetchBluechipMemesNow().catch((e) => console.error("🔥 manual refresh error:", e));
+//     return res.json({ source: "fallback", count: 0, tokens: [] });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching BlueChip Meme tokens:", err.message ?? err);
+//     res.status(500).json({ error: "Failed to fetch BlueChip Meme tokens" });
+//   }
+// });
 
 
 export default tokenRelatedRouter;

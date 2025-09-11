@@ -67,6 +67,21 @@ import GhostRed from './ghost-red.svg';
 import BlcoksGreen from './block-green.svg';
 import BlocksRed from './block-red.svg';
 
+import TrendingIcon from './trending-icon.svg';
+import TrendingDark from './trending-icon-dark.svg';
+import PopularIcon from './popular-icon.svg';
+import Populardark from './popular-dark-icon.svg';
+import featuredicon from './featured-icon.svg';
+import FeaturedDark from './featured-icon-dark.svg';
+import StocksIcon from './stocks-icon.svg';
+import StocksDark from './stocks-icon-dark.svg';
+import AiIcon from './ai-icon.svg';
+import Aidark from './ai-icon-dark.svg';
+import LstsIcon from './lsts-icon.svg';
+import lstDark from './lsts-icon-dark.svg';
+import Bluechipicon from './bluechip-icon.svg';
+import BlueChipDark from './bluechip-icon-dark.svg';
+
 // Login elements left
 import LeftCircle from './login-elements-left/circle.svg';
 import LeftStar from './login-elements-left/left-star.svg';
@@ -177,6 +192,20 @@ export default {
   CandleStiks,
   Trophy,
   Crown,
+  TrendingIcon,
+  TrendingDark,
+  PopularIcon,
+  Populardark,
+  featuredicon,
+  FeaturedDark,
+  StocksIcon,
+  StocksDark,
+  AiIcon,
+  Aidark,
+  LstsIcon,
+  lstDark,
+  Bluechipicon,
+  BlueChipDark,
 
   StarUserGreen,
   StarUserRed,
