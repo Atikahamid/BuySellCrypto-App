@@ -118,6 +118,13 @@ import MyChatIcon from './my-chat-icon.svg';
 import MyChatIconSelected from './my-chat-icon-selected.svg';
 import CoinStatusIcon from './coin-status-icon.svg';
 import CoinStatusIconSelected from './coin-status-icon-selected.svg';
+import NewTokensIcon from './newTokens.svg';
+import FinalStretchicon from './final-stretch-icons.svg';
+import MigratedIcon from './migrated-tokens-icons.svg';
+import NewTokensDark from './new-token-dark.svg';
+import FinalStretchDark from './final-stretch-dark.svg';
+import MigratedDark from './migrated-dark.svg';
+import PencilIcon from './pencil-icon.svg';
 // Login elements right
 import RightRectangle from './login-elements-right/rectangle-right.svg';
 import RightSwap from './login-elements-right/swap-right.svg';
@@ -177,6 +184,9 @@ export default {
   CryptoIcon,
   MagnifyingGlass,
   MagnifyingGlassSelected,
+  NewTokensDark,
+  FinalStretchDark,
+  MigratedDark,
   tensor,
   listedNft,
   cross,
@@ -206,7 +216,9 @@ export default {
   lstDark,
   Bluechipicon,
   BlueChipDark,
-
+  NewTokensIcon,
+  FinalStretchicon,
+  MigratedIcon,
   StarUserGreen,
   StarUserRed,
   CloudGreen,
@@ -253,6 +265,7 @@ export default {
   CoinStatusIcon,
   CoinStatusIconSelected,
   SettingsIcon,
+  PencilIcon,
   MyWalletIcon,
   // Login elements right
   RightRectangle,

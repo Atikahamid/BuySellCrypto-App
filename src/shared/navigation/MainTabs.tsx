@@ -26,6 +26,7 @@ import { ProfileScreen } from '@/screens/sample-ui/Threads/profile-screen';
 // import { TradesFeedScreen } from '@/screens/sample-ui/Threads/feed-screen';
 import { IPFSAwareImage } from '../utils/IPFSImage';
 import { TokensScreen } from '@/screens/sample-ui/Threads/tokenPulse/TokenScreen';
+import { CoinDetailPage, TokenDetailScreen } from '@/screens';
 // Create context for scroll-based UI hiding
 interface ScrollUIContextType {
   hideTabBar: () => void;
@@ -384,6 +385,7 @@ export default function MainTabs() {
         <Tab.Screen
           name="chat"
           component={ChatListScreen}
+          // component={TokenDetailScreen}
           options={{
             tabBarIcon: ({ focused, size }) => (
               <AnimatedTabIcon

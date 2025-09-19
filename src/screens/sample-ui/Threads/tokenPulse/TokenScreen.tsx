@@ -7,10 +7,12 @@ import {
   FlatList,
   StyleSheet,
   Platform,
+  Animated,
+  ScrollView,
 } from "react-native";
+import Icons from "@/assets/svgs";
 import { TokenCard } from "./TokenCard";
 import COLORS from "@/assets/colors";
-import { AppHeader } from "@/core/shared-ui";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -21,19 +23,28 @@ import {
   getRelativeTime,
 } from "./tokenServicefile";
 import { LinearGradient } from "expo-linear-gradient";
+import { getValidImageSource, IPFSAwareImage } from "@/shared/utils/IPFSImage";
+import { DEFAULT_IMAGES } from "@/shared/config/constants";
+import { useAppSelector } from "@/shared/hooks/useReduxHooks";
+
+const TABS = [
+  { key: "newPairs", label: "New Pairs", icon: Icons.NewTokensIcon, darkIcon: Icons.NewTokensDark },
+  { key: "finalStretch", label: "Final Stretch", icon: Icons.FinalStretchicon, darkIcon: Icons.FinalStretchDark },
+  { key: "migrated", label: "Migrated", icon: Icons.MigratedIcon, darkIcon: Icons.MigratedDark },
+];
 
 export const TokensScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] =
-    useState<"newPairs" | "finalStretch" | "migrated">("newPairs");
+  const [activeTab, setActiveTab] = useState<"newPairs" | "finalStretch" | "migrated">("newPairs");
   const [apiTokens, setApiTokens] = useState<BackendToken[]>([]);
   const [loading, setLoading] = useState(false);
+  const storedProfilePic = useAppSelector((state) => state.auth.profilePicUrl);
+  const showHeader = true;
 
-  const handleBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
+  const handleProfilePress = () => {
+    navigation.navigate("ProfileScreen" as never);
+  };
 
-  // Fetch when tab changes
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -86,18 +97,6 @@ export const TokensScreen: React.FC = () => {
     },
   }));
 
-  const renderTab = (key: typeof activeTab, label: string) => (
-    <TouchableOpacity
-      key={key}
-      style={[styles.tab, activeTab === key && styles.activeTab]}
-      onPress={() => setActiveTab(key)}
-    >
-      <Text style={[styles.tabText, activeTab === key && styles.activeTabText]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}
@@ -105,35 +104,63 @@ export const TokensScreen: React.FC = () => {
       end={{ x: 0, y: 1 }}
       style={styles.container}
     >
-      <SafeAreaView
-        style={[
-          styles.container,
-          Platform.OS === "android" && styles.androidSafeArea,
-        ]}
-      >
-        <AppHeader title="App" showBackButton={true} onBackPress={handleBack} />
+      <View style={styles.container}>
+        {showHeader && (
+          <SafeAreaView edges={["top"]} >
+            <Animated.View style={[styles.header, { padding: 16, height: 80,  }]}>
+              <View style={headerStyles.container}>
+                <TouchableOpacity onPress={() => navigation.navigate("FiltersScreen" as never)} style={headerStyles.profileContainer}>
+                  <Icons.SettingsIcon width={28} height={28} color={COLORS.white} />
+                </TouchableOpacity>
+                <View style={headerStyles.iconsContainer}>
+                  <TouchableOpacity onPress={handleProfilePress} style={headerStyles.profileContainer}>
+                    <IPFSAwareImage
+                      source={storedProfilePic ? getValidImageSource(storedProfilePic) : DEFAULT_IMAGES.user}
+                      style={headerStyles.profileImage}
+                      defaultSource={DEFAULT_IMAGES.user}
+                      key={Platform.OS === "android" ? `profile-${Date.now()}` : "profile"}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={headerStyles.absoluteLogoContainer}>
+                  <Icons.AppLogo width={28} height={28} />
+                </View>
+              </View>
+            </Animated.View>
+          </SafeAreaView>
+        )}
 
         {/* Tabs */}
+        {/* Tabs */}
         <View style={styles.tabsContainer}>
-          {renderTab("newPairs", "New Pairs")}
-          {renderTab("finalStretch", "Final Stretch")}
-          {renderTab("migrated", "Migrated")}
+          {TABS.map((tab) => {
+            const IconComp = activeTab === tab.key ? tab.icon : tab.darkIcon;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, activeTab === tab.key && styles.activeTab]}
+                onPress={() => setActiveTab(tab.key as typeof activeTab)}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <IconComp width={16} height={16} />
+                  <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+                    {tab.label}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+
 
         {/* List */}
         <FlatList
           data={mappedApiTokens}
           keyExtractor={(item, idx) => item.mint ?? `${activeTab}-${idx}`}
           renderItem={({ item }) => <TokenCard {...item} />}
-          contentContainerStyle={{ padding: 12, paddingBottom: 80 }} // leave space for button
+          contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
           ListEmptyComponent={
-            <Text
-              style={{
-                color: COLORS.greyMid,
-                textAlign: "center",
-                marginTop: 20,
-              }}
-            >
+            <Text style={{ color: COLORS.greyMid, textAlign: "center", marginTop: 20 }}>
               {loading ? "Loading..." : "No tokens found."}
             </Text>
           }
@@ -143,42 +170,48 @@ export const TokensScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.launchButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate("MeteoraScreen" as never)} // <-- replace with your screen name
+          onPress={() => navigation.navigate("MeteoraScreen" as never)}
         >
           <Text style={styles.launchButtonText}>Launch a Coin</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  androidSafeArea: {
-    paddingTop: 0,
-  },
+  container: { flex: 1 },
+  header: { width: "100%", backgroundColor: COLORS.background, alignItems: "center" },
+
   tabsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
     paddingVertical: 12,
   },
   tab: {
-    paddingBottom: 6,
+    paddingHorizontal: 14,
+    marginLeft: 2,
+    marginRight: 8,
+    borderRadius: 20,
+    // paddingVertical: 12,
   },
   activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.brandPrimary,
+    backgroundColor: "#1C2233",
+    borderWidth: 1,
+    borderColor: "#2F3848",
+    paddingBottom: 3,
+    paddingTop: 3,
   },
   tabText: {
+    fontWeight: "600",
     color: COLORS.greyMid,
-    fontSize: 14,
+    fontSize: 12.75,
   },
   activeTabText: {
-    color: COLORS.white,
-    fontWeight: "600",
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
+
   launchButton: {
     position: "absolute",
     bottom: 80,
@@ -195,9 +228,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-  launchButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  launchButtonText: { color: COLORS.white, fontSize: 16, fontWeight: "600" },
+});
+
+
+export const headerStyles = StyleSheet.create({
+  container: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", position: "relative" },
+  profileContainer: { width: 36, height: 36, borderRadius: 18, overflow: "hidden" },
+  profileImage: { width: "100%", height: "100%", borderRadius: 18, backgroundColor: COLORS.greyDark },
+  absoluteLogoContainer: { position: "absolute", left: 0, right: 0, alignItems: "center", justifyContent: "center", zIndex: -1 },
+  iconsContainer: { flexDirection: "row", alignItems: "center" },
+  iconButton: { paddingHorizontal: 4 },
 });

@@ -6,7 +6,6 @@ export async function up(knex: Knex): Promise<void> {
     table.string("mint").primary();
     table.string("name").nullable();
     table.string("symbol").nullable();
-    table.text("uri").nullable();
     table.text("image").nullable();
 
     // financial stats

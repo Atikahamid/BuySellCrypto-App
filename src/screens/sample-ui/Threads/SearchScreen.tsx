@@ -30,7 +30,8 @@ import {
 import { ensureCompleteTokenInfo } from "@/modules/data-module";
 
 // ✅ Import your SVG icons
-import Icons from '../../../assets/svgs'; // assuming index.ts exports all
+import Icons from "../../../assets/svgs"; // assuming index.ts exports all
+import SearchBox from "./SearchBox";
 
 const TABS = [
   { key: "Trending", label: "Trending", icon: Icons.TrendingIcon, darkIcon: Icons.TrendingDark },
@@ -40,11 +41,18 @@ const TABS = [
   { key: "AI", label: "AI", icon: Icons.AiIcon, darkIcon: Icons.Aidark },
   { key: "LSTs", label: "LSTs", icon: Icons.LstsIcon, darkIcon: Icons.lstDark },
   { key: "BlueChip", label: "Blue Chip Memes", icon: Icons.Bluechipicon, darkIcon: Icons.BlueChipDark },
-  { key: "Holding", label: "Holding", icon: Icons.StocksIcon, darkIcon: Icons.StocksDark }, // placeholder
+  { key: "Holding", label: "Holding", icon: Icons.StocksIcon, darkIcon: Icons.StocksDark },
 ];
 
 const TAB_DATA: Record<string, any[]> = {
   Featured: [
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
+    { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
     { name: "JUMBA", symbol: "JUMBA", mc: "$8.3K", liq: "$11.53K", vol: "$2.56M", change: 133.31 },
   ],
   AI: [],
@@ -68,6 +76,9 @@ export default function SearchScreen() {
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // ✅ State for search
+  const [searchQuery, setSearchQuery] = useState("");
+
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -83,19 +94,13 @@ export default function SearchScreen() {
       try {
         let res: any[] = [];
 
-        if (activeTab === "Trending") {
-          res = await fetchTrendingTokens();
-        } else if (activeTab === "Popular") {
-          res = await fetchPopularTokens();
-        } else if (activeTab === "Stocks") {
-          res = await fetchXstockTokens();
-        } else if (activeTab === "LSTs") {
-          res = await fetchLSTsTokens();
-        } else if (activeTab === "BlueChip") {
-          res = await fetchBlueChipMemes();
-        } else if (activeTab === "AI") {
-          res = await fetchAITokens();
-        } else {
+        if (activeTab === "Trending") res = await fetchTrendingTokens();
+        else if (activeTab === "Popular") res = await fetchPopularTokens();
+        else if (activeTab === "Stocks") res = await fetchXstockTokens();
+        else if (activeTab === "LSTs") res = await fetchLSTsTokens();
+        else if (activeTab === "BlueChip") res = await fetchBlueChipMemes();
+        else if (activeTab === "AI") res = await fetchAITokens();
+        else {
           setTokens(TAB_DATA[activeTab] || []);
           setLoading(false);
           return;
@@ -114,8 +119,8 @@ export default function SearchScreen() {
             vol: t.volume
               ? `$${formatCompactNumber(t.volume7dUSD)}`
               : t.totalVolume
-              ? `$${formatCompactNumber(t.totalVolume)}`
-              : "-",
+                ? `$${formatCompactNumber(t.totalVolume)}`
+                : "-",
             change: t.priceChange24h ?? 0,
           }))
         );
@@ -133,6 +138,13 @@ export default function SearchScreen() {
     };
   }, [activeTab]);
 
+  // ✅ Filter tokens by search query
+  const filteredTokens = tokens.filter(
+    (t) =>
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}
@@ -149,7 +161,7 @@ export default function SearchScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.tabBar}
-            contentContainerStyle={{ paddingHorizontal: 8 }}
+            contentContainerStyle={{ paddingHorizontal: 10 }}
           >
             {TABS.map((tab) => {
               const IconComp = activeTab === tab.key ? tab.icon : tab.darkIcon;
@@ -174,13 +186,13 @@ export default function SearchScreen() {
           {loading ? (
             <View style={{ padding: 24, alignItems: "center" }}>
               <ActivityIndicator size="small" color={COLORS.brandPrimary} />
-              <Text style={{ color: COLORS.greyMid, marginTop: 8 }}>
+              <Text style={{ color: COLORS.greyMid, marginTop: 10 }}>
                 Loading {activeTab}...
               </Text>
             </View>
           ) : (
             <FlatList
-              data={tokens}
+              data={filteredTokens}
               keyExtractor={(item, idx) =>
                 (item.mint ?? item.symbol ?? item.name ?? idx.toString()) + "-" + idx
               }
@@ -195,6 +207,15 @@ export default function SearchScreen() {
             />
           )}
         </View>
+
+        {/* ✅ Fixed search bar */}
+        <View style={styles.fixedSearch}>
+          <SearchBox
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            placeholder="Search tokens..."
+          />
+        </View>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -207,18 +228,21 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     paddingVertical: 15,
+    height: 65,
   },
   tab: {
-    paddingHorizontal: 12,
-    marginRight: 18,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 14,
   },
   activeTab: {
-    backgroundColor: "#101937ff",
+    backgroundColor: "#1C2233",
     borderWidth: 1,
-    borderColor: "#3b4551ff",
-    paddingBottom: 3,
-    paddingTop: 3,
+    borderColor: "#2F3848",
   },
   tabContent: {
     flexDirection: "row",
@@ -226,11 +250,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabText: {
-    color: "#AAA",
-    fontSize: 14,
-    fontWeight: "500",
+    color: "#7A8495",
+    fontSize: 12.75,
+    fontWeight: "600",
   },
   activeTabText: {
-    color: "#FFF",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  fixedSearch: {
+    position: "absolute",
+    bottom: 70,
+    left: 0,
+    right: 0,
   },
 });

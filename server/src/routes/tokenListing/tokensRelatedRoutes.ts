@@ -367,395 +367,89 @@ async function fetchTokenDetail(mint: string) {
   }
 }
 
-// -------------------------------------
-// Route: XStock Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/xstock-tokens", async (req: Request, res: Response) => {
+// Shared function to serve tokens
+async function serveTokens(
+  req: Request,
+  res: Response,
+  category: string,
+  redisKey: string,
+  cacheTTL: number = 120
+) {
   try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: xSTOCK_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
+    // 1) Try Redis
+    try {
+      const cached = await redisClient.get(redisKey);
+      if (cached) {
+        const tokens = JSON.parse(cached);
+        console.log(`✅ Serving ${category} from Redis`);
+        return res.json({ source: "cache", count: tokens.length, tokens });
       }
-    );
-
-    const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
-    if (!trades.length) return res.json({ count: 0, tokens: [] });
-
-    const seen = new Map<string, any>();
-    for (const entry of trades) {
-      const currency = entry.Trade?.Currency ?? {};
-      const mint = currency.MintAddress;
-      if (!mint || seen.has(mint)) continue;
-
-      let imageUrl: string | null = null;
-      if (currency.Uri) {
-        const meta = await decodeMetadata(currency.Uri);
-        if (meta) imageUrl = meta.image || null;
-      }
-
-      seen.set(mint, {
-        mint,
-        name: currency.Name ?? null,
-        symbol: currency.Symbol ?? null,
-        uri: currency.Uri ?? null,
-        image: imageUrl,
-        // latestPrice: entry.Trade?.latest_price ?? null,
-        // totalVolume: entry.total_volume ?? "0",
-        // totalTrades: entry.total_trades ?? "0",
-        // uniqueTraders: entry.unique_traders ?? "0",
-        // uniqueDexs: entry.unique_dexs ?? "0",
-      });
+    } catch (err: any) {
+      console.warn(`⚠️ Redis get failed for ${category}:`, err.message);
     }
 
-    const tokensArr = Array.from(seen.values());
-    const enriched = await Promise.all(
-      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
+    // 2) Fallback: Postgres
+    const rows = await knex("discovery_tokens")
+      .select(
+        "mint",
+        "name",
+        "symbol",
+        "uri",
+        "image",
+        "marketcap",
+        "price_change_24h",
+        "volume_24h",
+        "liquidity",
+        "updated_at"
+      )
+      .where({ category })
+      .orderBy("marketcap", "desc")
+      .limit(200);
 
-    res.json({ count: enriched.length, tokens: enriched });
-  } catch (err: any) {
-    console.error("❌ Error fetching xStock tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch xStock tokens" });
-  }
-});
-
-// -------------------------------------
-// Route: LSTs Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/lsts-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: VERIFIED_LSTS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
+    if (rows.length > 0) {
+      // Update Redis for next time
+      try {
+        await redisClient.set(redisKey, JSON.stringify(rows), { EX: cacheTTL });
+      } catch (err: any) {
+        console.warn(`⚠️ Redis set failed for ${category}:`, err.message);
       }
-    );
-
-    const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
-    if (!trades.length) return res.json({ count: 0, tokens: [] });
-
-    const seen = new Map<string, any>();
-    for (const entry of trades) {
-      const currency = entry.Trade?.Currency ?? {};
-      const mint = currency.MintAddress;
-      if (!mint || seen.has(mint)) continue;
-
-      let imageUrl: string | null = null;
-      if (currency.Uri) {
-        const meta = await decodeMetadata(currency.Uri);
-        if (meta) imageUrl = meta.image || null;
-      }
-
-      seen.set(mint, {
-        mint,
-        name: currency.Name ?? null,
-        symbol: currency.Symbol ?? null,
-        uri: currency.Uri ?? null,
-        image: imageUrl,
-        // latestPriceUSD: entry.Trade?.latest_price_usd ?? null,
-        // latestPriceSOL: entry.Trade?.latest_price_sol ?? null,
-        // volume7dUSD: entry.volume_7d_usd ?? "0",
-        // trades7d: entry.trades_7d ?? "0",
-        // uniqueTraders7d: entry.unique_traders_7d ?? "0",
-        // protocolName: entry.Trade?.Dex?.ProtocolName ?? null,
-      });
+      console.log(`✅ Serving ${category} from Postgres`);
+      return res.json({ source: "db", count: rows.length, tokens: rows });
     }
 
-    const tokensArr = Array.from(seen.values());
-    const enriched = await Promise.all(
-      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
-
-    res.json({ count: enriched.length, tokens: enriched });
+    // 3) Nothing in cache or DB → fallback
+    console.log(`⚠️ No data found for ${category}, returning fallback`);
+    return res.json({ source: "fallback", count: 0, tokens: [] });
   } catch (err: any) {
-    console.error("❌ Error fetching LSTs tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch LSTs tokens" });
+    console.error(`❌ Error fetching ${category}:`, err.message);
+    res.status(500).json({ error: `Failed to fetch ${category}` });
   }
-});
+}
 
-// -------------------------------------
-// Route: Bluechip Memes Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: BLUECHIP_MEMES_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
+// ================== Routes ==================
+tokenRelatedRouter.get("/bluechip-memes", (req, res) =>
+  serveTokens(req, res, "bluechip_meme", "bluechip-memes", Number(process.env.BLUECHIP_CACHE_TTL ?? 120))
+);
 
-    const updates = response.data?.data?.Solana?.TokenSupplyUpdates ?? [];
-    if (!updates.length) return res.json({ count: 0, tokens: [] });
+tokenRelatedRouter.get("/xstock", (req, res) =>
+  serveTokens(req, res, "xstock", "xstock-tokens", Number(process.env.XSTOCK_CACHE_TTL ?? 120))
+);
 
-    const seen = new Map<string, any>();
-    for (const entry of updates) {
-      const update = entry.TokenSupplyUpdate ?? {};
-      const currency = update.Currency ?? {};
-      const mint = currency.MintAddress;
-      if (!mint || seen.has(mint)) continue;
+tokenRelatedRouter.get("/lsts", (req, res) =>
+  serveTokens(req, res, "lsts", "lsts-tokens", Number(process.env.LSTS_CACHE_TTL ?? 120))
+);
 
-      if (blacklist.includes(currency.Symbol) || blacklist.includes(currency.Name)) continue;
+tokenRelatedRouter.get("/ai", (req, res) =>
+  serveTokens(req, res, "ai", "ai-tokens", Number(process.env.AI_CACHE_TTL ?? 120))
+);
 
-      let imageUrl: string | null = null;
-      if (currency.Uri) {
-        const meta = await decodeMetadata(currency.Uri);
-        if (meta) imageUrl = meta.image || null;
-      }
+tokenRelatedRouter.get("/trending", (req, res) =>
+  serveTokens(req, res, "trending", "trending-tokens", Number(process.env.TRENDING_CACHE_TTL ?? 120))
+);
 
-      seen.set(mint, {
-        mint,
-        name: currency.Name ?? null,
-        symbol: currency.Symbol ?? null,
-        uri: currency.Uri ?? null,
-        image: imageUrl,
-      });
-    }
-
-    const tokensArr = Array.from(seen.values());
-    const enriched = await Promise.all(
-      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
-
-    res.json({ count: enriched.length, tokens: enriched });
-  } catch (err: any) {
-    console.error("❌ Error fetching BlueChip Meme tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch BlueChip Meme tokens" });
-  }
-});
-
-// -------------------------------------
-// Route: AI Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/ai-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: AI_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
-
-    const trades = response.data?.data?.Solana?.DEXTradeByTokens ?? [];
-    if (!trades.length) return res.json({ count: 0, tokens: [] });
-
-    const seen = new Map<string, any>();
-    for (const entry of trades) {
-      const currency = entry.Trade?.Currency ?? {};
-      const mint = currency.MintAddress;
-      if (!mint || seen.has(mint)) continue;
-
-      let imageUrl: string | null = null;
-      if (currency.Uri) {
-        const meta = await decodeMetadata(currency.Uri);
-        if (meta) imageUrl = meta.image || null;
-      }
-
-      seen.set(mint, {
-        mint,
-        name: currency.Name ?? null,
-        symbol: currency.Symbol ?? null,
-        uri: currency.Uri ?? null,
-        image: imageUrl,
-        // latestPrice: entry.Trade?.latest_price ?? null,
-      });
-    }
-
-    const tokensArr = Array.from(seen.values());
-    const enriched = await Promise.all(
-      tokensArr.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
-
-    res.json({ count: enriched.length, tokens: enriched });
-  } catch (err: any) {
-    console.error("❌ Error fetching AI tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch AI tokens" });
-  }
-});
-
-// -------------------------------------
-// Route: Trending Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/trending-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: TRENDING_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
-
-    const solana = response.data?.data?.Solana;
-    if (!solana) return res.json({ count: 0, tokens: [] });
-
-    const frames = [solana.trending_1min || [], solana.trending_5min || [], solana.trending_30min || [], solana.trending_1hour || []];
-    const tokenMap = new Map<string, any[]>();
-
-    frames.forEach((frame, idx) => {
-      frame.forEach((entry: any) => {
-        const currency = entry.Trade?.Currency;
-        if (!currency?.MintAddress) return;
-
-        if (!tokenMap.has(currency.MintAddress)) {
-          tokenMap.set(currency.MintAddress, []);
-        }
-
-        tokenMap.get(currency.MintAddress)?.push({
-          frameIndex: idx,
-          uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
-          volume: Number(entry.traded_volume || 0),
-          trades: Number(entry.trades || 0),
-          currency,
-        });
-      });
-    });
-
-    const trending: any[] = [];
-    const seenMints = new Set<string>();
-
-    for (const [mint, metrics] of tokenMap) {
-      metrics.sort((a, b) => a.frameIndex - b.frameIndex);
-
-      let isTrending = false;
-      for (let i = 1; i < metrics.length; i++) {
-        const prev = metrics[i - 1];
-        const curr = metrics[i];
-        if (curr.uniqueTraders > prev.uniqueTraders || curr.volume > prev.volume || curr.trades > prev.trades) {
-          isTrending = true;
-          break;
-        }
-      }
-
-      if (isTrending && !seenMints.has(mint)) {
-        seenMints.add(mint);
-        const currency = metrics[0].currency;
-
-        let imageUrl: string | null = null;
-        if (currency.Uri) {
-          const meta = await decodeMetadata(currency.Uri);
-          if (meta) imageUrl = meta.image || null;
-        }
-
-        trending.push({
-          mint,
-          name: currency.Name ?? null,
-          symbol: currency.Symbol ?? null,
-          uri: currency.Uri ?? null,
-          image: imageUrl,
-        });
-      }
-    }
-
-    const enriched = await Promise.all(
-      trending.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
-
-    res.json({ count: enriched.length, tokens: enriched });
-  } catch (err: any) {
-    console.error("❌ Error fetching trending tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch trending tokens" });
-  }
-});
-
-// -------------------------------------
-// Route: Popular Tokens
-// -------------------------------------
-tokenRelatedRouter.get("/popular-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: POPULAR_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
-
-    const solana = response.data?.data?.Solana;
-    if (!solana) return res.json({ count: 0, tokens: [] });
-
-    const frames = [solana.popular_24h || [], solana.popular_7d || []];
-    const tokenMap = new Map<string, any[]>();
-
-    frames.forEach((frame, idx) => {
-      frame.forEach((entry: any) => {
-        const currency = entry.Trade?.Currency;
-        if (!currency?.MintAddress) return;
-
-        if (!tokenMap.has(currency.MintAddress)) {
-          tokenMap.set(currency.MintAddress, []);
-        }
-
-        tokenMap.get(currency.MintAddress)?.push({
-          frameIndex: idx,
-          uniqueTraders: Number(entry.tradesCountWithUniqueTraders || 0),
-          volume: Number(entry.traded_volume || 0),
-          trades: Number(entry.trades || 0),
-          currency,
-        });
-      });
-    });
-
-    const popular: any[] = [];
-    const seenMints = new Set<string>();
-
-    for (const [mint, metrics] of tokenMap) {
-      metrics.sort((a, b) => a.frameIndex - b.frameIndex);
-
-      if (!seenMints.has(mint)) {
-        seenMints.add(mint);
-        const currency = metrics[0].currency;
-
-        let imageUrl: string | null = null;
-        if (currency.Uri) {
-          const meta = await decodeMetadata(currency.Uri);
-          if (meta) imageUrl = meta.image || null;
-        }
-
-        popular.push({
-          mint,
-          name: currency.Name ?? null,
-          symbol: currency.Symbol ?? null,
-          uri: currency.Uri ?? null,
-          image: imageUrl,
-        });
-      }
-    }
-
-    const enriched = await Promise.all(
-      popular.map(async (t) => ({ ...t, ...(await fetchTokenDetail(t.mint)) }))
-    );
-
-    res.json({ count: enriched.length, tokens: enriched });
-  } catch (err: any) {
-    console.error("❌ Error fetching popular tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch popular tokens" });
-  }
-});
-
+tokenRelatedRouter.get("/popular", (req, res) =>
+  serveTokens(req, res, "popular", "popular-tokens", Number(process.env.POPULAR_CACHE_TTL ?? 120))
+);
 
 // ---------------------------------------------------------------------------------------------------------
 
@@ -1268,48 +962,61 @@ tokenRelatedRouter.get("/popular-tokens", async (req: Request, res: Response) =>
 //   }
 // });
 
+// ==== File: server/src/routes/tokenRelated.ts ====
 // tokenRelatedRouter.get("/bluechip-memes", async (req: Request, res: Response) => {
 //   try {
-//     // 1) Try Redis
+//     // 1) Redis
 //     try {
 //       const cached = await redisClient.get("bluechip-memes");
 //       if (cached) {
 //         const tokens = JSON.parse(cached);
+//         console.log("serving from redis");
 //         return res.json({ source: "cache", count: tokens.length, tokens });
 //       }
 //     } catch (rErr) {
 //       console.warn("⚠️ Redis get failed:", rErr?.message ?? rErr);
 //     }
 
-//     // 2) Try Postgres
-//     const rows = await knex("bluechip_memes").select(
-//       "mint",
-//       "name",
-//       "symbol",
-//       "uri",
-//       "image",
-//       "marketcap",
-//       "price_change_24h",
-//       "updated_at"
-//     ).orderBy("marketcap", "desc").limit(200);
+//     // 2) Postgres
+//     const rows = await knex("discovery_tokens")
+//       .select(
+//         "mint",
+//         "name",
+//         "symbol",
+//         "uri",
+//         "image",
+//         "marketcap",
+//         "price_change_24h",
+//         "volume_24h",
+//         "liquidity",
+//         "updated_at"
+//       )
+//       .where({ category: "bluechip_meme" })
+//       .orderBy("marketcap", "desc")
+//       .limit(200);
 
 //     if (rows.length > 0) {
-//       // set redis (best-effort)
 //       try {
-//         await redisClient.set("bluechip-memes", JSON.stringify(rows), { EX: Number(process.env.BLUECHIP_CACHE_TTL ?? 60) });
-//       } catch (rErr) { console.warn("⚠️ Redis set failed:", rErr?.message ?? rErr); }
+//         await redisClient.set("bluechip-memes", JSON.stringify(rows), {
+//           EX: Number(process.env.BLUECHIP_CACHE_TTL ?? 60),
+//         });
+//       } catch (rErr) {
+//         console.warn("⚠️ Redis set failed:", rErr?.message ?? rErr);
+//       }
 //       return res.json({ source: "db", count: rows.length, tokens: rows });
 //     }
 
-//     // 3) No cache + no db -> trigger background refresh (non-blocking) and return empty quickly
-//     // do not await to keep request fast
-//     fetchBluechipMemesNow().catch((e) => console.error("🔥 manual refresh error:", e));
+//     // 3) Trigger background fetch
+//     fetchBluechipMemesNow().catch((e) =>
+//       console.error("🔥 manual refresh error:", e)
+//     );
 //     return res.json({ source: "fallback", count: 0, tokens: [] });
 //   } catch (err: any) {
 //     console.error("❌ Error fetching BlueChip Meme tokens:", err.message ?? err);
 //     res.status(500).json({ error: "Failed to fetch BlueChip Meme tokens" });
 //   }
 // });
+
 
 
 export default tokenRelatedRouter;

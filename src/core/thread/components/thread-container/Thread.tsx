@@ -12,6 +12,7 @@ import COLORS from '@/assets/colors';
 import { useTrades } from '../../hooks/useTrades';
 import { formatTimeAgo } from '../../utils';
 import { formatCompactNumber } from '@/screens/sample-ui/Threads/SearchScreen';
+import SearchBox from '@/screens/sample-ui/Threads/SearchBox';
 
 export const Thread: React.FC<ThreadProps> = ({
   rootPosts,
@@ -23,7 +24,7 @@ export const Thread: React.FC<ThreadProps> = ({
 }) => {
   const trades = useTrades();
   const navigation = useNavigation();
-
+  const [searchQuery, setSearchQuery] = useState("");
   const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
 
   const baseComponentStyles = getThreadBaseStyles();
@@ -34,8 +35,9 @@ export const Thread: React.FC<ThreadProps> = ({
   const headerOpacity = useRef(new Animated.Value(1)).current;
 
   const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen' as never);
+    navigation.navigate('TokenDetailScreen' as never);
   };
+  
 
   return (
     <View style={styles.threadRootContainer}>
@@ -132,7 +134,8 @@ export const Thread: React.FC<ThreadProps> = ({
                     />
                     <View style={{ gap: 4 }}>
                       <Text style={styles.token}>{item.token.symbol}</Text>
-                      <Text style={styles.description}>{item.token.name}</Text>
+                      <Text style={styles.description} numberOfLines={1}           // ✅ restrict to 1 line
+                        ellipsizeMode="tail">{item.token.name}</Text>
                     </View>
                   </View>
                   <View style={styles.pnlBoxOuter}>
@@ -143,7 +146,7 @@ export const Thread: React.FC<ThreadProps> = ({
                           { color: item.priceChange24h < 0 ? "#FF4C4C" : "#4CAF50" },
                         ]}
                       >
-                        ${item.pnl} PNL 
+                        ${item.pnl} PNL
                       </Text>
 
                       <Text
@@ -158,7 +161,7 @@ export const Thread: React.FC<ThreadProps> = ({
                     </View>
 
                     <Text style={styles.marketCap}>
-                      {formatCompactNumber(item.currentMarketCap)} MC
+                      ${formatCompactNumber(item.currentMarketCap)} MC
                     </Text>
                   </View>
 
@@ -174,6 +177,13 @@ export const Thread: React.FC<ThreadProps> = ({
             </View>
           )}
         />
+        <View style={styles.fixedSearch}>
+          <SearchBox
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            placeholder="Search tokens..."
+          />
+        </View>
       </View>
     </View>
   );

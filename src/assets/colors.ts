@@ -30,6 +30,8 @@ const COLORS = {
   // DarkBackground colors
   // background: '#131720ff',
   backgroundGradient: ['#000e1d', '#032448ff', '#00132a', '#031828', '#061141'],
+  backgroundSemiGradient: ['#071e36ff', '#032448ff', '#051c35ff', '#042945ff', '#051148ff'],
+
   lightBackground: '#141926',
   lighterBackground: '#5366a1ff',
   bottomTabBackground: '#232428ff',

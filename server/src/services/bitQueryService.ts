@@ -256,3 +256,8 @@ export class BitqueryService {
   }
 
 }
+
+export function sanitizeString(value?: string | null): string | null {
+  if (!value) return null;
+  return value.replace(/\u0000/g, ""); // strip null bytes
+}

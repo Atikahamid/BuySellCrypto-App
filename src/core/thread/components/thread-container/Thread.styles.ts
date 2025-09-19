@@ -11,7 +11,12 @@ export function getThreadBaseStyles() {
       backgroundColor: COLORS.background,
       flex: 1,
     },
-
+    fixedSearch: {
+      position: "absolute",
+      bottom: 70,
+      left: 0,
+      right: 0,
+    },
     // Header styles
     header: {
       width: '100%',
@@ -106,7 +111,7 @@ export function getThreadBaseStyles() {
       borderRadius: 50,
       marginRight: 6,
     },
-    userDetails:{
+    userDetails: {
       // display: 'flex',
       // flex: 1,
       flexDirection: 'column',
@@ -114,16 +119,16 @@ export function getThreadBaseStyles() {
       // borderWidth: 1,
       // justifyContent: 'space-between',
     },
-     walletAndTagOuter:{
+    walletAndTagOuter: {
       // display: 'flex',
       // flex: 1,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       // alignItems: 'center',
-      
+
     },
-    walletAndTag:{
+    walletAndTag: {
       // display: 'flex',
       // flex: 1,
       flexDirection: 'row',
@@ -138,10 +143,10 @@ export function getThreadBaseStyles() {
       marginLeft: 8,
       borderRadius: 6,
     },
-    buyTag: { backgroundColor: '#38c71eff' },
+    buyTag: { backgroundColor: '#38c71eff', },
     sellTag: { backgroundColor: '#e15c5cff' },
-    tagText: { color: '#fff', fontSize: 10, fontWeight: '600' },
-    time: { color: '#fffafaff', fontSize: 12, paddingBottom: 4, marginBottom: 25,  },
+    tagText: { color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
+    time: { color: '#fffafaff', fontSize: 12, paddingBottom: 4, marginBottom: 20, paddingRight: 7 },
 
 
     middleRow: {
@@ -175,7 +180,7 @@ export function getThreadBaseStyles() {
       marginRight: 8,
     },
     token: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    description: { color: '#fff', fontSize: 14 },
+    description: { color: '#fff', fontSize: 14, width: 100, overflow: 'hidden' },
     pnlBox: { alignItems: 'flex-end', flexDirection: 'row' },
     pnl: { color: '#fc7979ff', fontWeight: 'bold' },
     pnlPercent: { color: '#fc7979ff', fontSize: 12 },
@@ -183,7 +188,7 @@ export function getThreadBaseStyles() {
       flexDirection: 'column',
       gap: 4, // Space between pnl and marketCap
     },
-    content:{
+    content: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -194,7 +199,7 @@ export function getThreadBaseStyles() {
       padding: 8,
       gap: 4, // Space between left SVG and title
     },
-    text:{
+    text: {
       color: '#fff',
       fontWeight: 'bold',
       fontSize: 16,

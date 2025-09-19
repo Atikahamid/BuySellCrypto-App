@@ -61,7 +61,7 @@ app.use(cors(corsOptions));
 
 // Create HTTP server for Socket.IO
 const server = http.createServer(app);
-
+ 
 // Initialize WebSocket service with improved options
 const webSocketService = new WebSocketService(server);
 
@@ -260,7 +260,7 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
   try {
     await testDbConnection();
     await runMigrationsAndStartServer();
-    // await connectRedis();
+    await connectRedis();
     console.log('✅ Database and migrations completed successfully');
 
     // await startIndexer(webSocketService.io);

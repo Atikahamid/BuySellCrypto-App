@@ -9,6 +9,7 @@ export { ProfileScreen, styles as ProfileScreenStyles } from './profile-screen';
 export { PostThreadScreen, styles as PostThreadScreenStyles } from './post-thread-screen';
 export { CoinDetailPage, styles as CoinDetailPageStyles } from './coin-detail-page';
 export { TokensScreen} from './tokenPulse';
+export {TokenDetailScreen} from './token-detail-screen';
 // Re-export other specific components like SearchScreen.
 export { default as SearchScreen } from './SearchScreen';
 // export { default as TokenScreen } fro./tokenPulse/TokenScreeneen';

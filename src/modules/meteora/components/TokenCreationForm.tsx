@@ -13,6 +13,8 @@ import {
     Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Icons from '@/assets/svgs';
+
 import * as ImagePicker from 'expo-image-picker';
 import COLORS from '@/assets/colors';
 import TYPOGRAPHY from '@/assets/typography';
@@ -210,19 +212,6 @@ export default function TokenCreationForm({
         return true;
     };
 
-    const handleNext = () => {
-        setError('');
-        if (step === 1 && validateStep1()) {
-            setStep(2);
-        }
-    };
-
-    const handleBack = () => {
-        setError('');
-        if (step === 2) {
-            setStep(1);
-        }
-    };
 
     const handleCreateToken = async () => {
         if (!validateStep2()) {
@@ -392,6 +381,43 @@ export default function TokenCreationForm({
             <View>
                 {/* <Text style={styles.sectionTitle}>Basic Token Information</Text> */}
 
+                {/* Token image section - improved UI */}
+                <View style={styles.inputContainer}>
+                    <View style={styles.avatarContainer}>
+                        {imageUri ? (
+                            imageUri.startsWith('http') || imageUri.startsWith('ipfs') ? (
+                                <View style={styles.avatarUrlPreview}>
+                                    <Text style={styles.avatarUrlText}>{imageUri}</Text>
+                                </View>
+                            ) : (
+                                <Image source={{ uri: imageUri }} style={styles.avatarImage} />
+                            )
+                        ) : (
+                            <View style={styles.uploadContent}>
+                                <View style={{ paddingTop: 2 }} />
+                                <TouchableOpacity
+                                    onPress={pickImage}
+                                    style={styles.uploadImageButton}
+                                    disabled={isCreating}>
+                                    <Text style={styles.uploadButtonText}>+</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {/* Edit pencil (always visible) */}
+                        <TouchableOpacity
+                            style={styles.editIconContainer}
+                            onPress={pickImage}
+                            disabled={isCreating}
+                        >
+                            <View style={styles.editIconCircle}>
+                                <Icons.PencilIcon width={14} height={14} color={COLORS.white} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View >
+
+
                 <View style={styles.inputContainer}>
                     {/* <Text style={styles.label}>Token Name</Text> */}
                     <TextInput
@@ -443,120 +469,47 @@ export default function TokenCreationForm({
                     <Text style={styles.helperText}>Project website for token metadata</Text>
                 </View>
 
-                {/* Token image section - improved UI */}
-                <View style={styles.inputContainer}>
-                    {/* <Text style={styles.label}>Token Image</Text> */}
-                    <View style={styles.imageUploadContainer}>
-                        {imageUri ? (
-                            <View style={styles.imagePreviewContainer}>
-                                {imageUri.startsWith('http') || imageUri.startsWith('ipfs') ? (
-                                    <View style={styles.imageUrlPreview}>
-                                        <Text style={styles.imageUrlText}>{imageUri}</Text>
-                                    </View>
-                                ) : (
-                                    <Image
-                                        source={{ uri: imageUri }}
-                                        style={styles.imagePreview}
-                                    />
-                                )}
-                                <View style={styles.imageControlsContainer}>
-                                    <TouchableOpacity
-                                        style={styles.imageControlButton}
-                                        onPress={pickImage}
-                                        disabled={isCreating}>
-                                        <Text style={styles.imageControlText}>Change</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.imageControlButton, styles.removeButton]}
-                                        onPress={removeImage}
-                                        disabled={isCreating}>
-                                        <Text style={styles.imageControlText}>Remove</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={styles.uploadContent}>
-                                <View style={{ paddingTop: 2 }} />
-                                <TouchableOpacity
-                                    onPress={pickImage}
-                                    style={styles.uploadImageButton}
-                                    disabled={isCreating}>
-                                    <LinearGradient
-                                        colors={['#427abbff', '#164780ff']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.uploadButtonGradient}
-                                    >
-                                        <Text style={styles.uploadButtonText}>Upload Image</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
 
-                                {/* <Text style={styles.orText}>OR</Text> */}
-
-                                {/* <View style={styles.urlInputContainer}>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Enter image URL (https://... or ipfs://...)"
-                                        placeholderTextColor={COLORS.greyDark}
-                                        value={tokenLogo}
-                                        onChangeText={setTokenLogo}
-                                        editable={!isCreating}
-                                        keyboardAppearance="dark"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={setImageFromUrl}
-                                        style={[styles.urlButton, !tokenLogo && styles.disabledButton]}
-                                        disabled={isCreating || !tokenLogo}>
-                                        <Text style={styles.urlButtonText}>Use URL</Text>
-                                    </TouchableOpacity>
-                                </View> */}
-                                <Text style={styles.helperText}>
-                                    Upload a square image (recommended 512x512px)
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
 
                 {/* Social media section */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                     style={styles.socialsToggleButton}
                     onPress={() => setShowSocials(!showSocials)}
                     disabled={isCreating}>
                     <Text style={styles.socialsToggleText}>
                         {showSocials ? 'Hide Social Links' : 'Add Social Links'} {showSocials ? '↑' : '↓'}
                     </Text>
-                </TouchableOpacity>
-
-                {showSocials && (
-                    <View style={styles.socialsContainer}>
-                        <View style={styles.inputContainer}>
-                            {/* <Text style={styles.label}>Twitter (Optional)</Text> */}
-                            <TextInput
-                                style={styles.input}
-                                value={tokenTwitter}
-                                onChangeText={setTokenTwitter}
-                                placeholder="Twitter (Optional)"
-                                placeholderTextColor={COLORS.greyDark}
-                                editable={!isCreating}
-                                keyboardAppearance="dark"
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            {/* <Text style={styles.label}>Telegram (Optional)</Text> */}
-                            <TextInput
-                                style={styles.input}
-                                value={tokenTelegram}
-                                onChangeText={setTokenTelegram}
-                                placeholder="Telegram (Optional)"
-                                placeholderTextColor={COLORS.greyDark}
-                                editable={!isCreating}
-                                keyboardAppearance="dark"
-                            />
-                        </View>
+                </TouchableOpacity> */}
+                <View style={styles.socialsContainer}>
+                    <View style={styles.inputContainer}>
+                        {/* <Text style={styles.label}>Twitter (Optional)</Text> */}
+                        <TextInput
+                            style={styles.input}
+                            value={tokenTwitter}
+                            onChangeText={setTokenTwitter}
+                            placeholder="Twitter (Optional)"
+                            placeholderTextColor={COLORS.greyDark}
+                            editable={!isCreating}
+                            keyboardAppearance="dark"
+                        />
                     </View>
-                )}
+
+                    <View style={styles.inputContainer}>
+                        {/* <Text style={styles.label}>Telegram (Optional)</Text> */}
+                        <TextInput
+                            style={styles.input}
+                            value={tokenTelegram}
+                            onChangeText={setTokenTelegram}
+                            placeholder="Telegram (Optional)"
+                            placeholderTextColor={COLORS.greyDark}
+                            editable={!isCreating}
+                            keyboardAppearance="dark"
+                        />
+                    </View>
+                </View>
+                {/* {showSocials && (
+                    
+                )} */}
                 {/* Buy on create option */}
                 <View style={styles.switchContainer}>
                     <Text style={styles.label}>Buy tokens after creation</Text>
@@ -569,70 +522,29 @@ export default function TokenCreationForm({
                 </View>
 
                 {/* Buy amount input (only shown when toggle is on) */}
-                {buyOnCreate && (
-                    <View style={styles.inputContainer}>
-                        {/* <Text style={styles.label}>Amount to buy (SOL)</Text> */}
-                        <TextInput
-                            style={styles.input}
-                            value={buyAmount}
-                            onChangeText={setBuyAmount}
-                            placeholder="Amount to buy (SOL)"
-                            placeholderTextColor={COLORS.greyDark}
-                            keyboardType="numeric"
-                            keyboardAppearance="dark"
-                        />
-                        <Text style={styles.helperText}>Amount of SOL to spend buying your token after creation.</Text>
-                    </View>
-                )}
-                {/* <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Total Supply</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenSupply}
-                        onChangeText={setTokenSupply}
-                        placeholder="e.g. 1000000000"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                </View>
+                {
+                    buyOnCreate && (
+                        <View style={styles.inputContainer}>
+                            {/* <Text style={styles.label}>Amount to buy (SOL)</Text> */}
+                            <TextInput
+                                style={styles.input}
+                                value={buyAmount}
+                                onChangeText={setBuyAmount}
+                                placeholder="Amount to buy (SOL)"
+                                placeholderTextColor={COLORS.greyDark}
+                                keyboardType="numeric"
+                                keyboardAppearance="dark"
+                            />
+                            <Text style={styles.helperText}>Amount of SOL to spend buying your token after creation.</Text>
+                        </View>
+                    )
+                }
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Decimals (6-9)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenDecimals}
-                        onChangeText={setTokenDecimals}
-                        placeholder="e.g. 9"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        maxLength={1}
-                        keyboardAppearance="dark"
-                    />
-                </View> */}
 
-                {/* <View style={styles.switchContainer}>
-                    <Text style={styles.label}>Use Token-2022 Standard</Text>
-                    <Switch
-                        value={isToken2022}
-                        onValueChange={setIsToken2022}
-                        trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                        thumbColor={isToken2022 ? COLORS.white : COLORS.greyLight}
-                    />
-                </View> */}
 
                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                {/* <TouchableOpacity style={styles.actionButton} onPress={handleNext}>
-                    <LinearGradient
-                        colors={['#32D4DE', '#B591FF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.actionButtonGradient}
-                    >
-                        <Text style={styles.actionButtonText}>Next</Text>
-                    </LinearGradient>
-                </TouchableOpacity> */}
+
                 <TouchableOpacity
                     style={[styles.actionButton, styles.createButton]}
                     onPress={handleCreateToken}
@@ -653,257 +565,15 @@ export default function TokenCreationForm({
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
-            </View>
+            </View >
         );
     };
 
-    const renderStep2 = () => {
-        return (
-            <View>
-                <Text style={styles.sectionTitle}>Bonding Curve Configuration</Text>
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Initial Market Cap (SOL)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={initialMarketCap}
-                        onChangeText={setInitialMarketCap}
-                        placeholder="e.g. 100"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                    <Text style={styles.helperText}>Starting market cap for your token.</Text>
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Migration Market Cap (SOL)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={migrationMarketCap}
-                        onChangeText={setMigrationMarketCap}
-                        placeholder="e.g. 3000"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                    <Text style={styles.helperText}>When reached, token graduates to DAMM V1.</Text>
-                </View>
-
-                {/* Buy on create option */}
-                <View style={styles.switchContainer}>
-                    <Text style={styles.label}>Buy tokens after creation</Text>
-                    <Switch
-                        value={buyOnCreate}
-                        onValueChange={setBuyOnCreate}
-                        trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                        thumbColor={buyOnCreate ? COLORS.white : COLORS.greyLight}
-                    />
-                </View>
-
-                {/* Buy amount input (only shown when toggle is on) */}
-                {buyOnCreate && (
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Amount to buy (SOL)</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={buyAmount}
-                            onChangeText={setBuyAmount}
-                            placeholder="e.g. 1"
-                            placeholderTextColor={COLORS.greyDark}
-                            keyboardType="numeric"
-                            keyboardAppearance="dark"
-                        />
-                        <Text style={styles.helperText}>Amount of SOL to spend buying your token after creation.</Text>
-                    </View>
-                )}
-
-                {/* Add the bonding curve visualizer */}
-                <BondingCurveVisualizer
-                    initialMarketCap={parsedInitialMarketCap}
-                    migrationMarketCap={parsedMigrationMarketCap}
-                    tokenSupply={parsedTokenSupply}
-                    baseFeeBps={Number(baseFeeBps)}
-                    dynamicFeeEnabled={dynamicFeeEnabled}
-                    collectFeeBoth={collectFeeBoth}
-                    migrationFeeOption={selectedMigrationFee}
-                />
-
-                <TouchableOpacity
-                    style={styles.advancedToggle}
-                    onPress={() => setShowAdvanced(!showAdvanced)}
-                >
-                    <Text style={styles.advancedToggleText}>
-                        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
-                    </Text>
-                </TouchableOpacity>
-
-                {showAdvanced && (
-                    <View style={styles.advancedContainer}>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Base Fee (BPS)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={baseFeeBps}
-                                onChangeText={setBaseFeeBps}
-                                placeholder="e.g. 100 (1%)"
-                                placeholderTextColor={COLORS.greyDark}
-                                keyboardType="numeric"
-                                maxLength={4}
-                                keyboardAppearance="dark"
-                            />
-                            <Text style={styles.helperText}>100 BPS = 1% trading fee</Text>
-                        </View>
-
-                        <View style={styles.switchContainer}>
-                            <Text style={styles.label}>Enable Dynamic Fee</Text>
-                            <Switch
-                                value={dynamicFeeEnabled}
-                                onValueChange={setDynamicFeeEnabled}
-                                trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                                thumbColor={dynamicFeeEnabled ? COLORS.white : COLORS.greyLight}
-                            />
-                        </View>
-
-                        <View style={styles.switchContainer}>
-                            <Text style={styles.label}>Collect Fee in Both Tokens</Text>
-                            <Switch
-                                value={collectFeeBoth}
-                                onValueChange={setCollectFeeBoth}
-                                trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                                thumbColor={collectFeeBoth ? COLORS.white : COLORS.greyLight}
-                            />
-                        </View>
-
-                        <Text style={styles.label}>Migration Fee Option</Text>
-                        <View style={styles.feeTiersContainer}>
-                            {[
-                                { label: '0.25%', value: MigrationFeeOption.FixedBps25 },
-                                { label: '0.3%', value: MigrationFeeOption.FixedBps30 },
-                                { label: '1%', value: MigrationFeeOption.FixedBps100 },
-                                { label: '2%', value: MigrationFeeOption.FixedBps200 },
-                                { label: '4%', value: MigrationFeeOption.FixedBps400 },
-                                { label: '6%', value: MigrationFeeOption.FixedBps600 },
-                            ].map((fee) => (
-                                <TouchableOpacity
-                                    key={`fee-${fee.value}`}
-                                    style={[
-                                        styles.feeTierButton,
-                                        selectedMigrationFee === fee.value && styles.feeTierButtonSelected,
-                                    ]}
-                                    onPress={() => setSelectedMigrationFee(fee.value)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.feeTierText,
-                                            selectedMigrationFee === fee.value && styles.feeTierTextSelected,
-                                        ]}
-                                    >
-                                        {fee.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <Text style={styles.label}>LP Distribution</Text>
-                        <Text style={styles.helperText}>Total must add up to 100%</Text>
-                        <View style={styles.lpDistributionContainer}>
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Partner</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={partnerLpPercentage}
-                                    onChangeText={setPartnerLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Creator</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={creatorLpPercentage}
-                                    onChangeText={setCreatorLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Partner Locked</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={partnerLockedLpPercentage}
-                                    onChangeText={setPartnerLockedLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Creator Locked</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={creatorLockedLpPercentage}
-                                    onChangeText={setCreatorLockedLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {isCreating && statusMessage ? (
-                    <View style={styles.statusContainer}>
-                        <Text style={styles.statusText}>{statusMessage}</Text>
-                    </View>
-                ) : null}
-
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                        <Text style={styles.backButtonText}>Back</Text>
-                    </TouchableOpacity>
-                    <View style={{ width: 12 }} />
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.createButton]}
-                        onPress={handleCreateToken}
-                        disabled={isCreating}
-                    >
-                        <LinearGradient
-                            colors={['#32D4DE', '#B591FF']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.actionButtonGradient}
-                        >
-                            {isCreating ? (
-                                <ActivityIndicator color={COLORS.white} />
-                            ) : (
-                                <Text style={styles.actionButtonText}>
-                                    {buyOnCreate ? 'Create & Buy Tokens' : 'Create Token'}
-                                </Text>
-                            )}
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
 
     return (
         <LinearGradient
-            colors={COLORS.backgroundGradient}
+            colors={COLORS.backgroundSemiGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.container}
@@ -1004,18 +674,19 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: COLORS.darkerBackground,
-        borderRadius: 12,
+        borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 8,
         color: COLORS.white,
         fontSize: TYPOGRAPHY.size.md,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
+        // borderWidth: 1,
+        // borderColor: COLORS.borderDarkColor,
     },
     helperText: {
         fontSize: TYPOGRAPHY.size.xs,
         color: COLORS.greyDark,
         marginTop: 4,
+        marginLeft: 10,
     },
     switchContainer: {
         flexDirection: 'row',
@@ -1157,14 +828,15 @@ const styles = StyleSheet.create({
     },
     imageUploadContainer: {
         backgroundColor: COLORS.darkerBackground,
-        borderRadius: 8,
+        borderRadius: 30,
         borderWidth: 1,
         borderColor: COLORS.borderDarkColor,
         borderStyle: 'dashed',
-        height: 230,
+        height: 65,
+        width: 65,
         overflow: 'hidden',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignSelf: 'center',
     },
     uploadContent: {
         justifyContent: 'center',
@@ -1172,6 +844,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         padding: 20,
+        borderRadius: 50
     },
     imagePreviewContainer: {
         width: '100%',
@@ -1199,12 +872,12 @@ const styles = StyleSheet.create({
     },
     imageControlsContainer: {
         position: 'absolute',
-        bottom: 10,
-        right: 10,
+        top: 2,
+        right: 20,
         flexDirection: 'row',
     },
     imageControlButton: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(153, 131, 131, 0.6)',
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 4,
@@ -1265,9 +938,11 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     uploadImageButton: {
-        overflow: 'hidden',
+        color: "#fff",
+        // overflow: 'hidden',
         borderRadius: 8,
-        marginBottom: 16,
+
+        // marginBottom: 16,
     },
     uploadButtonGradient: {
         paddingVertical: 12,
@@ -1276,7 +951,7 @@ const styles = StyleSheet.create({
     },
     uploadButtonText: {
         color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
+        fontSize: 19,
         fontWeight: TYPOGRAPHY.weights.semiBold,
         fontFamily: TYPOGRAPHY.fontFamily,
     },
@@ -1287,4 +962,64 @@ const styles = StyleSheet.create({
     disabledButton: {
         opacity: 0.5,
     },
+
+    avatarContainer: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        alignSelf: 'center',
+        position: 'relative',
+        backgroundColor: COLORS.darkerBackground,
+        // overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 45,
+        resizeMode: 'cover',
+    },
+    avatarPlaceholder: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 45,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarPlaceholderText: {
+        color: COLORS.greyDark,
+        fontSize: 32,
+        fontWeight: TYPOGRAPHY.weights.semiBold,
+    },
+    avatarUrlPreview: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 6,
+    },
+    avatarUrlText: {
+        color: COLORS.white,
+        fontSize: TYPOGRAPHY.size.xs,
+        textAlign: 'center',
+    },
+    editIconContainer: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+    },
+    editIconCircle: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: "#164780ff",
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editIconText: {
+        color: COLORS.white,
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+
 });

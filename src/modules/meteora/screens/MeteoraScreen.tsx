@@ -76,7 +76,7 @@ export default function MeteoraScreen() {
                 {/* ✅ no conditional hooks, just pass props */}
                 <TokenCreationForm walletAddress={walletAddress} onTokenCreated={handleTokenCreated} />
 
-                {transactionHistory.length > 0 && (
+                {/* {transactionHistory.length > 0 && (
                     <View style={styles.historyContainer}>
                         <Text style={styles.historyTitle}>Recent Transactions</Text>
                         {transactionHistory.map((tx) => (
@@ -91,11 +91,11 @@ export default function MeteoraScreen() {
                             </View>
                         ))}
                     </View>
-                )}
+                )} */}
             </ScrollView>
 
             {/* ✅ keep Modal always mounted, just control `visible` */}
-            <Modal
+            {/* <Modal
                 visible={!!creationResult}
                 transparent
                 animationType="fade"
@@ -117,7 +117,7 @@ export default function MeteoraScreen() {
                                 Base Mint: {creationResult?.baseMint}
                             </Text>
                         </TouchableOpacity>
-                        {/* <Text style={styles.modalText}>Base Mint: {creationResult?.baseMint}</Text> */}
+                        <Text style={styles.modalText}>Base Mint: {creationResult?.baseMint}</Text>
                         <TouchableOpacity
                             style={styles.closeButton}
                             onPress={() => setCreationResult(null)}
@@ -126,7 +126,8 @@ export default function MeteoraScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
+            </Modal> */}
+            
         </SafeAreaView>
     );
 }

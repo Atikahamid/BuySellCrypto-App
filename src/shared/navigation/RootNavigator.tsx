@@ -26,7 +26,8 @@ import { useAppDispatch } from '@/shared/hooks/useReduxHooks';
 import { TokenInfo } from '@/modules/data-module';
 
 import WalletScreen from '@/modules/moonpay/screens/WalletScreen';
-import { DeleteAccountConfirmationScreen, IntroScreen, LoginScreen, WebViewScreen } from '@/screens';
+import { DeleteAccountConfirmationScreen, IntroScreen, LoginScreen, TokenDetailScreen, WebViewScreen } from '@/screens';
+import { FiltersScreen } from '@/screens/sample-ui/Threads/tokenPulse/FilterScreen';
 
 export type RootStackParamList = {
   IntroScreen: undefined;
@@ -168,6 +169,8 @@ export default function RootNavigator() {
             options={{ title: '' }}
           />
           <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+          <Stack.Screen name="TokenDetailScreen" component={TokenDetailScreen} />
+          <Stack.Screen name="FiltersScreen" component={FiltersScreen} />
           <Stack.Screen name="WalletScreen" component={WalletScreen} />
           <Stack.Screen name="OnrampScreen" component={OnrampScreen} />
           <Stack.Screen name="WebViewScreen" component={WebViewScreen} />
